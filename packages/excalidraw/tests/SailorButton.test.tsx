@@ -2,6 +2,25 @@ import { Excalidraw } from "../index";
 
 import { act, fireEvent, render, waitFor } from "./test-utils";
 
+const queryModal = () =>
+  document.querySelector(".excalidraw-modal-container .Modal");
+
+const openSailorDialog = async () => {
+  await render(<Excalidraw />);
+  act(() => {
+    fireEvent.click(
+      document.querySelector<HTMLButtonElement>(
+        "[data-testid='toolbar-sailor']",
+      )!,
+    );
+  });
+  return waitFor(() => {
+    const modal = queryModal();
+    expect(modal).not.toBeNull();
+    return modal!;
+  });
+};
+
 describe("SailorButton", () => {
   it("opens a 'Built with Sailor' dialog from the top-right button", async () => {
     await render(<Excalidraw />);
@@ -9,7 +28,6 @@ describe("SailorButton", () => {
     const button = document.querySelector<HTMLButtonElement>(
       "[data-testid='toolbar-sailor']",
     )!;
-    expect(button).not.toBeNull();
     expect(button.closest(".layer-ui__wrapper__top-right")).not.toBeNull();
 
     act(() => {
@@ -17,9 +35,7 @@ describe("SailorButton", () => {
     });
 
     const modal = await waitFor(() => {
-      const modal = document.querySelector(
-        ".excalidraw-modal-container .Modal",
-      );
+      const modal = queryModal();
       expect(modal).not.toBeNull();
       return modal!;
     });
@@ -32,7 +48,7 @@ describe("SailorButton", () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector(".excalidraw-modal-container")).toBeNull();
+      expect(queryModal()).toBeNull();
     });
   });
 
@@ -44,30 +60,14 @@ describe("SailorButton", () => {
         fireEvent.click(modal.querySelector(".Modal__background")!),
     ],
   ])("dismisses the dialog via %s", async (_label, dismiss) => {
-    await render(<Excalidraw />);
-
-    act(() => {
-      fireEvent.click(
-        document.querySelector<HTMLButtonElement>(
-          "[data-testid='toolbar-sailor']",
-        )!,
-      );
-    });
-
-    const modal = await waitFor(() => {
-      const modal = document.querySelector(
-        ".excalidraw-modal-container .Modal",
-      );
-      expect(modal).not.toBeNull();
-      return modal!;
-    });
+    const modal = await openSailorDialog();
 
     act(() => {
       dismiss(modal);
     });
 
     await waitFor(() => {
-      expect(document.querySelector(".excalidraw-modal-container")).toBeNull();
+      expect(queryModal()).toBeNull();
     });
   });
 });

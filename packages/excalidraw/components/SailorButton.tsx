@@ -40,4 +40,3 @@ export const SailorButton = () => {
     </>
   );
 };
-SailorButton.displayName = "SailorButton";
