@@ -1,0 +1,14 @@
+.excalidraw {
+  .SailorButton .ToolIcon__icon {
+    border: 1px solid var(--default-border-color);
+    border-radius: 50%;
+    background-color: var(--island-bg-color);
+  }
+
+  .SailorDialog {
+    .Dialog__content {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+}
