@@ -35,4 +35,39 @@ describe("SailorButton", () => {
       expect(document.querySelector(".excalidraw-modal-container")).toBeNull();
     });
   });
+
+  it.each([
+    ["Escape", (modal: Element) => fireEvent.keyDown(modal, { key: "Escape" })],
+    [
+      "clicking outside",
+      (modal: Element) =>
+        fireEvent.click(modal.querySelector(".Modal__background")!),
+    ],
+  ])("dismisses the dialog via %s", async (_label, dismiss) => {
+    await render(<Excalidraw />);
+
+    act(() => {
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          "[data-testid='toolbar-sailor']",
+        )!,
+      );
+    });
+
+    const modal = await waitFor(() => {
+      const modal = document.querySelector(
+        ".excalidraw-modal-container .Modal",
+      );
+      expect(modal).not.toBeNull();
+      return modal!;
+    });
+
+    act(() => {
+      dismiss(modal);
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector(".excalidraw-modal-container")).toBeNull();
+    });
+  });
 });
