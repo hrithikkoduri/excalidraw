@@ -2044,6 +2044,14 @@ export const drawShapeToolIcon = createIcon(
   tablerIconProps,
 );
 
+export const sailorIcon = createIcon(
+  <g stroke="currentColor" fill="none">
+    <path d="M11 12h7l-7 -7v7" />
+    <path d="M3.5 15h17l-2 4.5h-13l-2 -4.5" />
+  </g>,
+  tablerIconProps,
+);
+
 export const laserPointerToolIcon = createIcon(
   <g
     fill="none"

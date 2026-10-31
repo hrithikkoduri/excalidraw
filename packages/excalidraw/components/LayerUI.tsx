@@ -36,6 +36,7 @@ import { SelectedShapeActions, CompactShapeActions } from "./Actions";
 import { LoadingMessage } from "./LoadingMessage";
 import { MobileMenu } from "./MobileMenu";
 import { PasteChartDialog } from "./PasteChartDialog";
+import { SailorButton } from "./SailorButton";
 import { Section } from "./Section";
 import Stack from "./Stack";
 import { UserList } from "./UserList";
@@ -424,6 +425,7 @@ const LayerUI = ({
                 appState.openSidebar?.name !== DEFAULT_SIDEBAR.name) && (
                 <tunnels.DefaultSidebarTriggerTunnel.Out />
               )}
+            {defaultUIEnabled && <SailorButton />}
             {shouldShowStats && (
               <Stats
                 app={app}
