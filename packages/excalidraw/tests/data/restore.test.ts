@@ -92,6 +92,64 @@ describe("restoreElements", () => {
     },
   );
 
+  it("restores a legacy element without note to an empty note", () => {
+    const element = API.createElement({
+      type: "rectangle",
+      index: "a0" as FractionalIndex,
+    });
+    // JSON round-trip drops undefined, matching files saved before `note`.
+    const input: ImportedDataState = JSON.parse(
+      JSON.stringify({ elements: [{ ...element, note: undefined }] }),
+    );
+    expect(input.elements?.[0]).not.toHaveProperty("note");
+
+    const restored = restore.restoreElements(input.elements, null);
+
+    expect(restored[0].note).toBe("");
+  });
+
+  it("caps a note coming from the file at 500 characters", () => {
+    const element = API.createElement({
+      type: "rectangle",
+      index: "a0" as FractionalIndex,
+    });
+    const restored = restore.restoreElements(
+      [{ ...element, note: "n".repeat(550) }],
+      null,
+    );
+
+    expect((restored[0].note as string).length).toBe(500);
+  });
+
+  it("round-trips a note through serializeAsJSON and restoreElements", () => {
+    const noted = API.createElement({
+      type: "rectangle",
+      index: "a0" as FractionalIndex,
+    });
+    const plain = API.createElement({
+      type: "rectangle",
+      index: "a1" as FractionalIndex,
+    });
+    const restored = restore.restoreElements(
+      [{ ...noted, note: "rough sketch, keep out of the final board" }, plain],
+      null,
+    );
+    expect(restored.map((element) => element.note)).toEqual([
+      "rough sketch, keep out of the final board",
+      "",
+    ]);
+
+    const exported: ImportedDataState = JSON.parse(
+      serializeAsJSON(restored, getDefaultAppState(), {}, "local"),
+    );
+    expect(exported.elements?.[0]).toHaveProperty(
+      "note",
+      "rough sketch, keep out of the final board",
+    );
+    expect(exported.elements?.[1]).toHaveProperty("note", "");
+    expect(restore.restoreElements(exported.elements, null)).toEqual(restored);
+  });
+
   it("preserves creation metadata when repairing duplicate element IDs", () => {
     const element = API.createElement({ type: "rectangle", created: 123 });
     const restored = restore.restoreElements(

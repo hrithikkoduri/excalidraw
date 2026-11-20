@@ -125,6 +125,9 @@ type RestoredAppState = Omit<
 
 const MAX_LINEAR_PX = 75_000;
 
+// cap notes coming from files we didn't write (legacy / foreign scenes)
+export const MAX_ELEMENT_NOTE_LENGTH = 500;
+
 // Last resort fix for extremely large linear elements (lines / arrows), which
 // would otherwise freeze the editor while rendering — e.g. a dotted or dashed
 // stroke spanning a huge distance generates an enormous dash array.
@@ -448,8 +451,10 @@ const repairBinding = <T extends ExcalidrawArrowElement>(
 };
 
 const restoreElementWithProperties = <
-  T extends Required<Omit<ExcalidrawElement, "customData">> & {
+  T extends Required<Omit<ExcalidrawElement, "customData" | "note">> & {
     customData?: ExcalidrawElement["customData"];
+    // optional on the element type, always filled in by `base` below
+    note?: ExcalidrawElement["note"];
     /** @deprecated */
     boundElementIds?: readonly ExcalidrawElement["id"][];
     /** @deprecated */
@@ -512,6 +517,10 @@ const restoreElementWithProperties = <
     created: element.created ?? null,
     link: element.link ? normalizeLink(element.link) : null,
     locked: element.locked ?? false,
+    note:
+      typeof element.note === "string"
+        ? element.note.slice(0, MAX_ELEMENT_NOTE_LENGTH)
+        : "",
   };
 
   if ("customData" in element || "customData" in extra) {
