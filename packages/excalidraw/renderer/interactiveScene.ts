@@ -131,6 +131,21 @@ const BINDING_MIDPOINT_COLOR = {
   [THEME.DARK]: "rgba(237, 237, 237, 0.8)",
 } as const;
 
+const NOTE_MARKER_COLOR = {
+  [THEME.LIGHT]: "#1e1e1e",
+  [THEME.DARK]: "#e3e3e3",
+} as const;
+
+const NOTE_MARKER_RADIUS = 4;
+
+/**
+ * Whether to draw the "has a note" marker for `element`. The note's text is
+ * never painted into the scene: only this dot, which is UI, not content.
+ */
+export const shouldRenderNoteMarker = (
+  element: NonDeletedExcalidrawElement,
+): boolean => !!element.note;
+
 const SEARCH_MATCH_COLOR = {
   [THEME.LIGHT]: {
     focus: "rgba(255, 124, 0, 0.4)",
@@ -2101,6 +2116,31 @@ const _renderInteractiveScene = ({
       context.restore();
     }
   });
+
+  // "has a note" markers: only this dot is painted, the note text itself
+  // never reaches either canvas (and so neither does it reach an export)
+  context.save();
+  context.translate(appState.scrollX, appState.scrollY);
+  context.fillStyle = NOTE_MARKER_COLOR[appState.theme];
+  const noteMarkerRadius = NOTE_MARKER_RADIUS / appState.zoom.value;
+  for (const element of visibleElements) {
+    if (!shouldRenderNoteMarker(element)) {
+      continue;
+    }
+    const [, y1, x2, , cx, cy] = getElementAbsoluteCoords(
+      element,
+      elementsMap,
+      true,
+    );
+    // the top-right corner of the element, turned with it
+    const [markerX, markerY] = pointRotateRads(
+      pointFrom<GlobalPoint>(x2, y1),
+      pointFrom<GlobalPoint>(cx, cy),
+      element.angle,
+    );
+    fillCircle(context, markerX, markerY, noteMarkerRadius, false);
+  }
+  context.restore();
 
   renderSnaps(context, appState);
 
