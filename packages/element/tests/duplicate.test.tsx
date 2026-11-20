@@ -124,6 +124,17 @@ describe("duplicating single elements", () => {
     });
   });
 
+  it("clones the note onto the duplicate and the deep copy", () => {
+    const element = API.createElement({ type: "rectangle" });
+    const noted = { ...element, note: "check with legal" };
+
+    const copy = duplicateElement(null, new Map(), noted);
+
+    expect(copy.note).toBe("check with legal");
+    expect(copy.id).not.toBe(noted.id);
+    expect(deepCopyElement(noted).note).toBe("check with legal");
+  });
+
   it("clones text element", () => {
     const element = API.createElement({
       type: "text",
