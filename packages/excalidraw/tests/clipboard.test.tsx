@@ -116,6 +116,21 @@ describe("general paste behavior", () => {
     });
   });
 
+  it("should carry an element note onto the pasted element", async () => {
+    const rectangle = API.createElement({ type: "rectangle" });
+    const clipboardJSON = serializeAsClipboardJSON({
+      elements: [{ ...rectangle, note: "see the spec" }],
+      files: null,
+    });
+    pasteWithCtrlCmdV(clipboardJSON);
+
+    await waitFor(() => {
+      expect(h.elements.length).toBe(1);
+      expect(h.elements[0].note).toBe("see the spec");
+      expect(h.elements[0].id).not.toBe(rectangle.id);
+    });
+  });
+
   it("should retain seed on shift-paste", async () => {
     const rectangle = API.createElement({ type: "rectangle" });
     const clipboardJSON = await serializeAsClipboardJSON({
