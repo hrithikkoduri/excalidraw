@@ -121,6 +121,27 @@ describe("restoreElements", () => {
     expect((restored[0].note as string).length).toBe(500);
   });
 
+  it("trims a note from the file and keeps surrounding whitespace out", () => {
+    const element = API.createElement({
+      type: "rectangle",
+      index: "a0" as FractionalIndex,
+    });
+    const restored = restore.restoreElements(
+      [
+        { ...element, note: "  surrounded by space  " },
+        { ...element, id: "spaces" as any, note: "   " },
+        { ...element, id: "newline" as any, note: "\n\t" },
+      ],
+      null,
+    );
+
+    expect(restored.map((el) => el.note)).toEqual([
+      "surrounded by space",
+      "",
+      "",
+    ]);
+  });
+
   it("round-trips a note through serializeAsJSON and restoreElements", () => {
     const noted = API.createElement({
       type: "rectangle",

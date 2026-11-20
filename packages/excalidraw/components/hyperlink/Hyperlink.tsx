@@ -482,7 +482,14 @@ const showElementTooltip = (
     if (HYPERLINK_TOOLTIP_OWNER !== owner) {
       return;
     }
-    IS_HYPERLINK_TOOLTIP_VISIBLE = render();
+    const didRender = render();
+    IS_HYPERLINK_TOOLTIP_VISIBLE = didRender;
+    if (!didRender) {
+      // a declined render (an element whose link/note went away) must not leave
+      // a tooltip from a previous owner on screen: `clearElementTooltip` only
+      // hides when the flag says visible, so a stale node would never go away
+      hideDocumentTooltip(ownerDocument);
+    }
   }, HYPERLINK_TOOLTIP_DELAY);
 };
 
