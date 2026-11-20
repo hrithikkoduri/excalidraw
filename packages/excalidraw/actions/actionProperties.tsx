@@ -1,6 +1,6 @@
 import { pointFrom } from "@excalidraw/math";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   BUCKET_FILL_BACKGROUND_PICKS,
@@ -170,6 +170,8 @@ import {
   restoreCaretPosition,
 } from "../hooks/useTextEditorFocus";
 
+import { MAX_ELEMENT_NOTE_LENGTH } from "../data/restore";
+
 import { getShortcutKey } from "../shortcut";
 
 import {
@@ -181,6 +183,14 @@ import { register } from "./register";
 import type { AppClassProperties, AppState, Primitive } from "../types";
 
 const FONT_SIZE_RELATIVE_INCREASE_STEP = 0.1;
+
+/** trim and cap a note; an emptied note is stored as "", like restore does */
+const normalizeNote = (value: string | null | undefined): string => {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim().slice(0, MAX_ELEMENT_NOTE_LENGTH);
+};
 
 const getStylesPanelInfo = (app: AppClassProperties) => {
   const stylesPanelMode = deriveStylesPanelMode(app.editorInterface);
@@ -769,6 +779,78 @@ export const actionChangeStrokeWidth = register<StrokeWidthKey>({
       </div>
     </fieldset>
   ),
+});
+
+export const actionChangeNote = register<string>({
+  name: "changeNote",
+  label: "labels.notes.label",
+  trackEvent: false,
+  perform: (elements, appState, value) => {
+    const note = normalizeNote(value);
+
+    return {
+      elements: changeProperty(elements, appState, (el) =>
+        newElementWith(el, { note }),
+      ),
+      appState: { ...appState },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    };
+  },
+  PanelComponent: ({ elements, appState, updateData, app }) => {
+    // keystrokes stay in a local draft; only a committed edit (blur, or Enter)
+    // reaches `updateData`, so one undo entry is recorded per committed note
+    // instead of one per keystroke
+    const committed = getFormValue(
+      elements,
+      app,
+      (element) => element.note || "",
+      (element) => element.hasOwnProperty("note"),
+      "",
+    );
+    const [draft, setDraft] = useState(committed);
+
+    // a selection change or an undo/redo replaces the committed value
+    useEffect(() => {
+      setDraft(committed);
+    }, [committed]);
+
+    const commit = () => {
+      const note = normalizeNote(draft);
+      if (note !== normalizeNote(committed)) {
+        updateData(note);
+      }
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== KEYS.ENTER || event.shiftKey) {
+        return;
+      }
+      // don't commit while an IME composition is being confirmed
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {
+        return;
+      }
+      event.preventDefault();
+      commit();
+    };
+
+    return (
+      <fieldset>
+        <legend>{t("labels.notes.label")}</legend>
+        <input
+          type="text"
+          className="TextInput"
+          style={{ width: "100%" }}
+          data-testid="element-note-input"
+          placeholder={t("labels.notes.hint")}
+          maxLength={MAX_ELEMENT_NOTE_LENGTH}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+        />
+      </fieldset>
+    );
+  },
 });
 
 export const actionChangeSloppiness = register<ExcalidrawElement["roughness"]>({
