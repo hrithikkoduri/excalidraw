@@ -148,6 +148,10 @@
     "unbindText": "Unbind text",
     "bindText": "Bind text to the container",
     "createContainerFromText": "Wrap text in a container",
+    "notes": {
+      "label": "Note",
+      "hint": "Add a note to this element"
+    },
     "link": {
       "edit": "Edit link",
       "editEmbed": "Edit embeddable link",

@@ -13,6 +13,7 @@ export {
   actionChangeBucketFillBackgroundColor,
   actionChangeStrokeWidth,
   actionChangeFillStyle,
+  actionChangeNote,
   actionChangeSloppiness,
   actionChangeFreedrawMode,
   actionChangeOpacity,
