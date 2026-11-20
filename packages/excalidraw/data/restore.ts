@@ -128,6 +128,10 @@ const MAX_LINEAR_PX = 75_000;
 // cap notes coming from files we didn't write (legacy / foreign scenes)
 export const MAX_ELEMENT_NOTE_LENGTH = 500;
 
+/** trim and cap note text; the one normalization panel writes and restore share */
+export const normalizeNoteText = (note: string): string =>
+  note.trim().slice(0, MAX_ELEMENT_NOTE_LENGTH);
+
 // Last resort fix for extremely large linear elements (lines / arrows), which
 // would otherwise freeze the editor while rendering — e.g. a dotted or dashed
 // stroke spanning a huge distance generates an enormous dash array.
@@ -517,10 +521,10 @@ const restoreElementWithProperties = <
     created: element.created ?? null,
     link: element.link ? normalizeLink(element.link) : null,
     locked: element.locked ?? false,
+    // trimmed as well as capped, so a whitespace-only note from a foreign file
+    // is the same "no note" the panel and the marker treat it as
     note:
-      typeof element.note === "string"
-        ? element.note.slice(0, MAX_ELEMENT_NOTE_LENGTH)
-        : "",
+      typeof element.note === "string" ? normalizeNoteText(element.note) : "",
   };
 
   if ("customData" in element || "customData" in extra) {

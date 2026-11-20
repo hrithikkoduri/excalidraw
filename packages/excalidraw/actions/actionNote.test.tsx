@@ -1,7 +1,10 @@
 import { fireEvent } from "@testing-library/react";
 import React from "react";
 
-import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
+import type {
+  ExcalidrawElement,
+  NonDeletedExcalidrawElement,
+} from "@excalidraw/element/types";
 
 import { Excalidraw } from "../index";
 
@@ -45,8 +48,33 @@ const renderWithElement = async (note = "") => {
   return element;
 };
 
+/**
+ * Renders two elements with the first selected. `selectedIds` seeds the
+ * selection through initialData for the same reason as above.
+ */
+const renderWithTwo = async () => {
+  const first = {
+    ...API.createElement({ type: "rectangle", x: 10, y: 10 }),
+    note: "",
+  };
+  const second = {
+    ...API.createElement({ type: "rectangle", x: 200, y: 10 }),
+    note: "",
+  };
+  await render(
+    <Excalidraw
+      handleKeyboardGlobally={true}
+      initialData={{
+        elements: [first, second],
+        appState: { selectedElementIds: { [first.id]: true } },
+      }}
+    />,
+  );
+  return { first, second };
+};
+
 describe("actionChangeNote", () => {
-  it("writes the note to the selected element only", async () => {
+  it("writes the note to the addressed element only", async () => {
     const element = await renderWithElement();
     const other = {
       ...API.createElement({ type: "rectangle", x: 200 }),
@@ -57,7 +85,10 @@ describe("actionChangeNote", () => {
     });
 
     act(() => {
-      h.app.actionManager.executeAction(actionChangeNote, "api", "  ship it  ");
+      h.app.actionManager.executeAction(actionChangeNote, "api", {
+        id: element.id,
+        note: "  ship it  ",
+      });
     });
 
     expect(API.getElement(element).note).toBe("ship it");
@@ -65,29 +96,102 @@ describe("actionChangeNote", () => {
   });
 
   it("writes an emptied note as an empty string with its own undo entry", async () => {
-    await renderWithElement();
+    const element = await renderWithElement();
 
     act(() => {
-      h.app.actionManager.executeAction(actionChangeNote, "api", "draft");
+      h.app.actionManager.executeAction(actionChangeNote, "api", {
+        id: element.id,
+        note: "draft",
+      });
     });
     expect(noteOf()).toBe("draft");
     expect(API.getUndoStack().length).toBe(1);
 
     act(() => {
-      h.app.actionManager.executeAction(actionChangeNote, "api", "   ");
+      h.app.actionManager.executeAction(actionChangeNote, "api", {
+        id: element.id,
+        note: "   ",
+      });
     });
     expect(noteOf()).toBe("");
     expect(API.getUndoStack().length).toBe(2);
   });
 
   it("records no history entry when the note is unchanged", async () => {
-    await renderWithElement("stays");
+    const element = await renderWithElement("stays");
 
     act(() => {
-      h.app.actionManager.executeAction(actionChangeNote, "api", "  stays ");
+      h.app.actionManager.executeAction(actionChangeNote, "api", {
+        id: element.id,
+        note: "  stays ",
+      });
     });
 
     expect(noteOf()).toBe("stays");
+    expect(API.getUndoStack().length).toBe(0);
+  });
+});
+
+describe("a pending draft follows the element it was typed for", () => {
+  const selectOnly = (id: ExcalidrawElement["id"]) => {
+    act(() => {
+      API.setSelectedElements(
+        h.elements.filter(
+          (element) => element.id === id,
+        ) as NonDeletedExcalidrawElement[],
+      );
+    });
+  };
+
+  it("writes to the element that was typed in, not the one selected at blur", async () => {
+    const { first, second } = await renderWithTwo();
+    const input = noteInput()!;
+
+    fireEvent.change(input, { target: { value: "about the first" } });
+    // selection moves before the field blurs, exactly as a canvas click does
+    selectOnly(second.id);
+    fireEvent.blur(input);
+
+    expect(API.getElement(first).note).toBe("about the first");
+    expect(API.getElement(second).note).toBe("");
+    // one committed edit -> one undo entry
+    expect(API.getUndoStack().length).toBe(1);
+
+    // and the second element's field starts empty, not with the text typed
+    // for the first
+    expect(noteInput()!.value).toBe("");
+  });
+
+  it("flushes the pending note when a deselect unmounts the field", async () => {
+    const { first } = await renderWithTwo();
+    const input = noteInput()!;
+
+    fireEvent.change(input, { target: { value: "keep me" } });
+    // clicking empty canvas clears the selection; React unmounts the input and
+    // no blur is ever fired
+    act(() => {
+      h.setState({ selectedElementIds: {} });
+    });
+
+    expect(noteInput()).toBeNull();
+    expect(API.getElement(first).note).toBe("keep me");
+    expect(API.getUndoStack().length).toBe(1);
+  });
+
+  it("drops the draft instead of overwriting an undo", async () => {
+    const { first } = await renderWithTwo();
+
+    fireEvent.change(noteInput()!, { target: { value: "committed" } });
+    fireEvent.blur(noteInput()!);
+    expect(API.getElement(first).note).toBe("committed");
+
+    // start typing a second note, then undo the committed one
+    fireEvent.change(noteInput()!, { target: { value: "half typ" } });
+    Keyboard.undo();
+
+    expect(API.getElement(first).note).toBe("");
+    expect(noteInput()!.value).toBe("");
+    // the abandoned draft was not recorded as another edit
     expect(API.getUndoStack().length).toBe(0);
   });
 });

@@ -299,10 +299,58 @@ describe("note tooltip", () => {
   });
 
   it("shows nothing for an emptied note", () => {
+    // the node exists first (a link tooltip created it), so "still hidden"
+    // is a real assertion rather than passing on a missing node
+    const element = newTextElement({
+      x: 0,
+      y: 0,
+      text: "hello",
+      link: "https://example.com",
+    });
+    const elementsMap = new Map([[element.id, element]]) as ElementsMap;
+    const owner = {};
+    act(() => {
+      showHyperlinkTooltip(element, appState, elementsMap, document, owner);
+      vi.advanceTimersByTime(HYPERLINK_TOOLTIP_DELAY + 1);
+    });
+    expect(getTooltip()).toHaveClass(TOOLTIP_VISIBLE_CLASS);
+    hideHyperlinkToolip(owner);
+    expect(getTooltip()).not.toHaveClass(TOOLTIP_VISIBLE_CLASS);
+
     showNote("   ");
     act(() => {
       vi.advanceTimersByTime(HYPERLINK_TOOLTIP_DELAY + 1);
     });
+    expect(getTooltip()).not.toHaveClass(TOOLTIP_VISIBLE_CLASS);
+  });
+
+  it("hides a visible tooltip when a whitespace note takes it over", () => {
+    // a foreign file can hold a whitespace-only note (the panel trims, but a
+    // hand-edited scene need not), and the marker treats it as no note at all
+    const element = newTextElement({
+      x: 0,
+      y: 0,
+      text: "hello",
+      link: "https://example.com",
+    });
+    const elementsMap = new Map([[element.id, element]]) as ElementsMap;
+    const owner = {};
+    act(() => {
+      showHyperlinkTooltip(element, appState, elementsMap, document, owner);
+      vi.advanceTimersByTime(HYPERLINK_TOOLTIP_DELAY + 1);
+    });
+    expect(getTooltip()?.textContent).toBe("https://example.com");
+
+    // the note tooltip declines to render for "   ", so it must not leave the
+    // link tooltip stranded on screen
+    showNote("   ", owner);
+    act(() => {
+      vi.advanceTimersByTime(HYPERLINK_TOOLTIP_DELAY + 1);
+    });
+    expect(getTooltip()).not.toHaveClass(TOOLTIP_VISIBLE_CLASS);
+
+    // and the stuck-node half: hiding afterwards must not resurrect it
+    hideHyperlinkToolip(owner);
     expect(getTooltip()).not.toHaveClass(TOOLTIP_VISIBLE_CLASS);
   });
 
