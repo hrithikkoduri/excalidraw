@@ -172,10 +172,6 @@
       "lockAll": "Lock all",
       "unlockAll": "Unlock all"
     },
-    "elementNotes": {
-      "label": "Notes",
-      "placeholder": "Add a note..."
-    },
     "statusPublished": "Published",
     "sidebarLock": "Keep sidebar open",
     "selectAllElementsInFrame": "Select all elements in frame",

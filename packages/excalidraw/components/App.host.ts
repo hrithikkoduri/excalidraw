@@ -10,6 +10,7 @@ import {
   type HyperlinkTooltipOwner,
 } from "./hyperlink/Hyperlink";
 import { startLinkImgDecoding } from "./hyperlink/helpers";
+import { hideNoteTooltip } from "./noteTooltip";
 
 import type { AppProps } from "../types";
 import type App from "./App";
@@ -150,6 +151,7 @@ export class AppHost {
   public destroy() {
     this._destroyed = true;
     hideHyperlinkToolip(this.hyperlinkTooltipOwner);
+    hideNoteTooltip(this.app.noteTooltipOwner);
     this.releaseOwnedInteractionState();
   }
   private _destroyed = false;

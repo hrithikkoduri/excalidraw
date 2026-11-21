@@ -1,10 +1,10 @@
 import clsx from "clsx";
-import { useEffect, useId, useRef, useState } from "react";
+import { useRef } from "react";
 import { Popover } from "radix-ui";
 
 import { CLASSES } from "@excalidraw/common";
 
-import { CaptureUpdateAction, isArrowElement } from "@excalidraw/element";
+import { isArrowElement } from "@excalidraw/element";
 
 import type {
   ExcalidrawElement,
@@ -58,97 +58,6 @@ const PROPERTIES_CLASSES = clsx([
   CLASSES.SHAPE_ACTIONS_THEME_SCOPE,
   "properties-content",
 ]);
-
-/**
- * The note a person can attach to an element: a caption, a multi-line field and
- * a live `<length>/500` counter. Text is held locally while typing and written
- * to the element once, on blur or when the field unmounts (panel close), as a
- * single `IMMEDIATELY`-captured change so one undo reverts the whole edit.
- */
-const NOTES_MAX_LENGTH = 500;
-
-const ElementNotesField = ({
-  element,
-  app,
-}: {
-  element: ExcalidrawElement;
-  app: AppClassProperties;
-}) => {
-  const inputId = useId();
-  const committed = (element.notes ?? "").slice(0, NOTES_MAX_LENGTH);
-
-  // the draft belongs to one element: typing creates it, switching selection
-  // or an outside change (undo/redo) falls back to what the element holds
-  const [draft, setDraft] = useState<{
-    elementId: ExcalidrawElement["id"];
-    value: string;
-  } | null>(null);
-
-  const value =
-    draft && draft.elementId === element.id ? draft.value : committed;
-
-  const commit = (nextValue: string) => {
-    const nextNotes = nextValue.slice(0, NOTES_MAX_LENGTH);
-    setDraft(null);
-
-    if (nextNotes === (element.notes ?? "")) {
-      return;
-    }
-
-    // write, then capture once so the whole edit is a single undo step
-    app.scene.mutateElement(element, { notes: nextNotes });
-    app.syncActionResult({ captureUpdate: CaptureUpdateAction.IMMEDIATELY });
-  };
-
-  // closing the panel unmounts the field without a blur; the unfinished note
-  // still has to land
-  const pending = draft && draft.elementId === element.id ? draft.value : null;
-  const commitRef = useRef({ commit, pending });
-  commitRef.current = { commit, pending };
-  useEffect(
-    () => () => {
-      if (commitRef.current.pending != null) {
-        commitRef.current.commit(commitRef.current.pending);
-      }
-    },
-    [],
-  );
-
-  return (
-    <div className="element-notes">
-      <div className="ExcTextField ExcTextField--fullWidth">
-        <label className="ExcTextField__label" htmlFor={inputId}>
-          {t("labels.elementNotes.label")}
-        </label>
-        <div className="ExcTextField__input element-notes__box">
-          <textarea
-            id={inputId}
-            className="element-notes__area"
-            rows={3}
-            maxLength={NOTES_MAX_LENGTH}
-            placeholder={t("labels.elementNotes.placeholder")}
-            value={value}
-            onChange={(event) =>
-              setDraft({
-                elementId: element.id,
-                value: event.target.value.slice(0, NOTES_MAX_LENGTH),
-              })
-            }
-            onBlur={(event) => commit(event.target.value)}
-          />
-        </div>
-      </div>
-      <div
-        className={clsx("element-notes__counter", {
-          "is-empty": value.length === 0,
-        })}
-        aria-live="polite"
-      >
-        {value.length}/{NOTES_MAX_LENGTH}
-      </div>
-    </div>
-  );
-};
 
 /**
  * The "arrange" (z-order) fieldset, identical across every styles-panel layout.
@@ -302,10 +211,6 @@ export const SelectedShapeActions = ({
             {predicates.lineEditor && renderAction("toggleLinearEditor")}
           </div>
         </fieldset>
-      )}
-
-      {predicates.notes && (
-        <ElementNotesField element={targetElements[0]} app={app} />
       )}
     </div>
   );
@@ -589,8 +494,6 @@ const CombinedExtraActions = ({
   container,
   showDuplicate,
   showDelete,
-  targetElements,
-  app,
 }: {
   appState: UIAppState;
   renderAction: ActionManager["renderAction"];
@@ -599,8 +502,6 @@ const CombinedExtraActions = ({
   container: HTMLDivElement | null;
   showDuplicate?: boolean;
   showDelete?: boolean;
-  targetElements: ExcalidrawElement[];
-  app: AppClassProperties;
 }) => {
   const isOpen = appState.openPopup === "compactOtherProperties";
 
@@ -671,10 +572,6 @@ const CombinedExtraActions = ({
                   {showDelete && renderAction("deleteSelectedElements")}
                 </div>
               </fieldset>
-
-              {predicates.notes && (
-                <ElementNotesField element={targetElements[0]} app={app} />
-              )}
             </div>
           </PropertiesPopover>
         )}
@@ -814,8 +711,6 @@ export const CompactShapeActions = ({
         predicates={predicates}
         setAppState={setAppState}
         container={container}
-        targetElements={targetElements}
-        app={app}
       />
     </div>
   );
@@ -953,8 +848,6 @@ export const MobileShapeActions = ({
           container={container}
           showDuplicate={!showDuplicateOutside}
           showDelete={!showDeleteOutside}
-          targetElements={targetElements}
-          app={app}
         />
       </div>
       <div

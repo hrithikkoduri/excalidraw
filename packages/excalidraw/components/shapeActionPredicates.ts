@@ -176,9 +176,6 @@ export const getShapeActionPredicates = (
     // the two flags below.
     link: singleSelected || isSingleElementBoundContainer,
     linkSingleOnly: singleSelected,
-    // a note belongs to exactly one element and is not edited while the text
-    // editor owns the panel
-    notes: singleSelected && !isEditingTextOrNewElement,
     cropEditor:
       !appState.croppingElementId &&
       singleSelected &&
