@@ -1,0 +1,358 @@
+// only what the prototype adds on top of the real editor styles: page chrome,
+// the notes field, the marker overlay and the export frame captions. Every
+// control inside the panel is styled by the repository's own SCSS.
+
+body {
+  margin: 0;
+  background: #f4f3f9;
+}
+
+.prototype-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: Assistant, system-ui, sans-serif;
+}
+
+.prototype-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e3ef;
+  font-size: 0.8125rem;
+  color: #4b4a5a;
+  z-index: 5;
+
+  nav {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.375rem;
+    background: #f0eff7;
+
+    &.active {
+      background: #6965db;
+      color: #fff;
+    }
+  }
+
+  .prototype-header__title {
+    font-weight: 600;
+    color: #1b1b1f;
+    margin-inline-end: auto;
+  }
+
+  .prototype-header__hint {
+    opacity: 0.75;
+  }
+}
+
+.prototype-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+// --- #panel ---------------------------------------------------------------
+
+.prototype-panel-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  justify-content: flex-start;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  overflow: auto;
+  padding: 0.25rem;
+}
+
+.prototype-panel-scene {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 340px;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e3ef;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a879c;
+  font-size: 0.8125rem;
+  overflow: hidden;
+}
+
+.prototype-panel-column {
+  flex: 0 0 auto;
+  width: 13rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .prototype-caption {
+    font-size: 0.75rem;
+    color: #6b6878;
+    line-height: 1.4;
+  }
+}
+
+.prototype-caption {
+  font-size: 0.75rem;
+  color: #6b6878;
+  line-height: 1.4;
+
+  strong {
+    color: #1b1b1f;
+  }
+}
+
+// --- the new "Notes" group ------------------------------------------------
+
+.notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  &__footer {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.6875rem;
+    color: var(--color-gray-60, #6b6878);
+  }
+
+  &__counter {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &--error {
+    .ExcTextField__input {
+      border-color: var(--color-danger, #db6965) !important;
+    }
+
+    .notes-field__counter,
+    .notes-field__error {
+      color: var(--color-danger, #db6965);
+    }
+  }
+
+  &__error {
+    font-size: 0.6875rem;
+  }
+
+  // the single-line TextField box is fixed at 3rem tall; a note needs room
+  .ExcTextField__input {
+    height: auto;
+    align-items: stretch;
+    padding: 0.5rem 0.75rem;
+  }
+
+  // multi-line: the real TextField wraps a single <input>, so the prototype
+  // wraps a textarea styled with the same ExcTextField classes
+  .notes-field__textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 4.5rem;
+    resize: vertical;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: var(--ExcTextField--color, var(--color-on-surface));
+    font-family: Assistant;
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+// --- #canvas and #export --------------------------------------------------
+
+.prototype-canvas-frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e3ef;
+  background: #fff;
+  overflow: hidden;
+
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  svg {
+    width: 100%;
+  }
+}
+
+// the notes marker: same box as the link icon (`DEFAULT_LINK_SIZE`), sized in
+// scene units and divided by zoom so it stays constant on screen
+.notes-marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6965db;
+  color: #fff;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+  cursor: default;
+
+  svg {
+    width: 11px;
+    height: 11px;
+    width: 11px !important;
+  }
+
+  &--hovered {
+    background: #5753d0;
+  }
+}
+
+.prototype-canvas-zoom {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e5e3ef;
+  font-size: 0.75rem;
+  color: #4b4a5a;
+
+  input {
+    width: 8rem;
+  }
+}
+
+// tooltip reuses the real `.excalidraw-tooltip` box (appended to <body> by
+// `getTooltipDiv`); only the truncation to a couple of lines is new
+.excalidraw-tooltip.prototype-notes-tooltip {
+  max-width: 15rem;
+  text-align: start;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+  padding: 6px 8px;
+}
+
+.prototype-export-caption {
+  flex: 0 0 auto;
+  width: 17rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #4b4a5a;
+
+  h2 {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: #1b1b1f;
+  }
+
+  ul {
+    margin: 0;
+    padding-inline-start: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    line-height: 1.4;
+  }
+
+  code {
+    background: #f0eff7;
+    border-radius: 0.25rem;
+    padding: 0 0.2rem;
+  }
+}
+
+// --- selection preview in the panel columns ---------------------------------
+
+.prototype-preview {
+  position: relative;
+  height: 110px;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e3ef;
+  background: #fff;
+  overflow: hidden;
+
+  canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  &__label {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.35rem;
+    font-size: 0.6875rem;
+    color: #8a879c;
+  }
+}
+
+.selection-frame {
+  position: absolute;
+  inset: 14px 22px;
+  pointer-events: none;
+
+  &__outline {
+    position: absolute;
+    inset: 6px;
+    border: 1px dashed #6965db;
+    border-radius: 2px;
+  }
+
+  &__handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border: 1.5px solid #6965db;
+    border-radius: 2px;
+    margin: -4px;
+  }
+
+  &__handle--nw { top: 6px; left: 6px; }
+  &__handle--n { top: 6px; left: 50%; }
+  &__handle--ne { top: 6px; right: 6px; margin-right: -4px; }
+  &__handle--e { top: 50%; right: 6px; margin-right: -4px; }
+  &__handle--se { bottom: 6px; right: 6px; margin-right: -4px; }
+  &__handle--s { bottom: 6px; left: 50%; }
+  &__handle--sw { bottom: 6px; left: 6px; }
+  &__handle--w { top: 50%; left: 6px; }
+}
