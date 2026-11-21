@@ -338,7 +338,6 @@ import {
   hideHyperlinkToolip,
   Hyperlink,
 } from "../components/hyperlink/Hyperlink";
-import { hideNoteTooltip, showNoteTooltip } from "./noteTooltip";
 
 import { Fonts } from "../fonts";
 import { editorJotaiStore, type WritableAtom } from "../editor-jotai";
@@ -706,8 +705,6 @@ class App extends React.Component<AppProps, AppState> {
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
   hitLinkElement?: NonDeletedExcalidrawElement;
-  /** identity token for the process-wide note tooltip, see `noteTooltip.ts` */
-  readonly noteTooltipOwner = {};
   lastPointerDownEvent: React.PointerEvent<HTMLElement> | null = null;
   /**
    * the handle of the resize in progress while `state.isResizing` — for UI
@@ -6582,8 +6579,6 @@ class App extends React.Component<AppProps, AppState> {
     ) {
       this.cursor.set(CURSOR_TYPE.POINTER);
 
-      // the link tooltip keeps priority over the note tooltip
-      hideNoteTooltip(this.noteTooltipOwner);
       showHyperlinkTooltip(
         this.hitLinkElement,
         this.state,
@@ -6668,20 +6663,6 @@ class App extends React.Component<AppProps, AppState> {
       : undefined;
     if (!this.applyElementLinkHoverAffordance()) {
       this.cursor.reset();
-      const hitElement = hitElementMightBeLocked?.locked
-        ? null
-        : hitElementMightBeLocked;
-      if (hitElement?.notes) {
-        showNoteTooltip(
-          hitElement,
-          this.state,
-          this.scene.getNonDeletedElementsMap(),
-          this.ownerDocument,
-          this.noteTooltipOwner,
-        );
-      } else {
-        hideNoteTooltip(this.noteTooltipOwner);
-      }
     }
   };
 
@@ -7295,19 +7276,6 @@ class App extends React.Component<AppProps, AppState> {
       if (isLaserTool) {
         return;
       }
-      // the note tooltip yields to the link tooltip: a hovered element's note
-      // only shows once no link affordance has taken the pointer
-      if (hitElement?.notes) {
-        showNoteTooltip(
-          hitElement,
-          this.state,
-          this.scene.getNonDeletedElementsMap(),
-          this.ownerDocument,
-          this.noteTooltipOwner,
-        );
-      } else {
-        hideNoteTooltip(this.noteTooltipOwner);
-      }
       if (
         hitElement &&
         (hitElement.link || isEmbeddableElement(hitElement)) &&
@@ -7558,7 +7526,6 @@ class App extends React.Component<AppProps, AppState> {
   private handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
-    hideNoteTooltip(this.noteTooltipOwner);
     if (
       !this.isInteractionEnabled() &&
       !this.isToolSupported(this.state.activeTool.type)
