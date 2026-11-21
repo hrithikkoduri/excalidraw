@@ -13,7 +13,10 @@ import {
 
 import { getElementBounds } from "@excalidraw/element";
 
-import type { ExcalidrawTextElement } from "@excalidraw/element/types";
+import type {
+  ExcalidrawGenericElement,
+  ExcalidrawTextElement,
+} from "@excalidraw/element/types";
 
 import { createPasteEvent, serializeAsClipboardJSON } from "../clipboard";
 
@@ -864,6 +867,27 @@ describe("copy and cut events", () => {
     expect(JSON.parse(cut.getData("text/plain")).elements).toEqual([
       expect.objectContaining({ id: rectangle.id }),
     ]);
+  });
+
+  it("should carry an element's note onto the pasted element", async () => {
+    const rectangle = API.createElement({
+      type: "rectangle",
+      notes: "keep me on the copy",
+    });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+
+    const copied = dispatchClipboardEvent("copy");
+    pasteWithCtrlCmdV(copied.getData("text/plain"));
+
+    await waitFor(() => {
+      expect(h.elements.length).toBe(2);
+      const pasted = h.elements.find(
+        (element) => element.id !== rectangle.id,
+      ) as ExcalidrawGenericElement;
+      // copy serialises whole elements, so the note comes back with its element
+      expect(pasted.notes).toBe("keep me on the copy");
+    });
   });
 });
 

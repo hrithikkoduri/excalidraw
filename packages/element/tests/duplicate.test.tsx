@@ -124,6 +124,29 @@ describe("duplicating single elements", () => {
     });
   });
 
+  it("carries the element's note onto the duplicate", async () => {
+    await render(<Excalidraw />);
+
+    const original = API.createElement({
+      type: "rectangle",
+      x: 20,
+      y: 20,
+      notes: "mind the loose hinge",
+    });
+    API.setElements([original]);
+    API.setSelectedElements([original]);
+
+    act(() => {
+      h.app.actionManager.executeAction(actionDuplicateSelection);
+    });
+
+    const duplicate = getCloneByOrigId(original.id);
+    expect(duplicate.id).not.toBe(original.id);
+    // the note is element data, so the clone carries it without picking fields
+    expect(duplicate.notes).toBe("mind the loose hinge");
+    expect(original.notes).toBe("mind the loose hinge");
+  });
+
   it("clones text element", () => {
     const element = API.createElement({
       type: "text",

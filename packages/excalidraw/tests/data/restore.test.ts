@@ -103,6 +103,77 @@ describe("restoreElements", () => {
     expect(restored[0].id).not.toBe(restored[1].id);
   });
 
+  describe("notes migration", () => {
+    it("loads an element from a scene saved without notes with an empty note", () => {
+      const element = API.createElement({
+        type: "rectangle",
+        id: "id-rect01",
+        // a valid index keeps restore from re-indexing (and rerolling
+        // versionNonce) so the two restores below stay comparable
+        index: "a0" as FractionalIndex,
+        x: 10,
+        y: 20,
+        width: 100,
+        height: 200,
+      });
+      // a scene saved before the field existed: JSON drops the undefined key
+      const oldScene = JSON.parse(
+        JSON.stringify({ elements: [{ ...element, updated: 456 }] }),
+      );
+      expect(oldScene.elements[0]).not.toHaveProperty("notes");
+
+      const [restored] = restore.restoreElements(oldScene.elements, null);
+      expect(restored.notes).toBe("");
+
+      // every other prop is untouched: the restored old element equals the
+      // restored element that only differs by carrying a note
+      const newScene = JSON.parse(
+        JSON.stringify({
+          elements: [{ ...element, updated: 456, notes: "hello" }],
+        }),
+      );
+      const [restoredWithNote] = restore.restoreElements(
+        newScene.elements,
+        null,
+      );
+      expect(restored).toEqual({ ...restoredWithNote, notes: "" });
+      expect(restored).toMatchObject({
+        id: "id-rect01",
+        x: 10,
+        y: 20,
+        width: 100,
+        height: 200,
+        updated: 456,
+      });
+    });
+
+    it("clamps a note longer than 500 characters", () => {
+      const [restored] = restore.restoreElements(
+        [
+          {
+            ...API.createElement({ type: "rectangle" }),
+            notes: "a".repeat(600),
+          },
+        ],
+        null,
+      );
+
+      expect(restored.notes).toBe("a".repeat(500));
+    });
+
+    it.each([123, null, ["note"], { text: "note" }])(
+      "reads a non-string note (%s) as empty",
+      (notes) => {
+        const [restored] = restore.restoreElements(
+          [{ ...API.createElement({ type: "rectangle" }), notes } as any],
+          null,
+        );
+
+        expect(restored.notes).toBe("");
+      },
+    );
+  });
+
   it("should restore transparent sticky note stroke as black", () => {
     const stickyNote = {
       ...API.createElement({ type: "stickynote" }),
