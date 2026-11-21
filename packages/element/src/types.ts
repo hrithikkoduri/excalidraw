@@ -83,6 +83,9 @@ type _ExcalidrawElementBase = Readonly<{
   created: number | null;
   link: string | null;
   locked: boolean;
+  /** Plain-text annotation shown on hover, max 500 characters. Empty string
+      means no note; restore normalises a missing note to empty. */
+  notes?: string;
   customData?: Record<string, any>;
 }>;
 

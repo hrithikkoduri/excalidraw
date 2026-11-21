@@ -108,6 +108,7 @@ const _newElementBase = <T extends ExcalidrawElement>(
     boundElements = null,
     link = null,
     locked = DEFAULT_ELEMENT_PROPS.locked,
+    notes,
     ...rest
   }: ElementConstructorOpts & Omit<Partial<ExcalidrawGenericElement>, "type">,
 ) => {
@@ -168,6 +169,7 @@ const _newElementBase = <T extends ExcalidrawElement>(
     created: rest.created === undefined ? timestamp : rest.created,
     link,
     locked,
+    notes,
     customData: rest.customData,
   };
   return element;
