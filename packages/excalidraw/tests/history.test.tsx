@@ -71,6 +71,7 @@ import {
   act,
   assertSelectedElements,
   render,
+  screen,
   togglePopover,
   getCloneByOrigId,
   checkpointHistory,
@@ -249,6 +250,53 @@ describe("history", () => {
         expect.objectContaining({ id: rect1.id, isDeleted: false }),
         expect.objectContaining({ id: rect2.id, isDeleted: false }),
       ]);
+    });
+
+    it("should record a note edit as a single history entry", async () => {
+      await render(<Excalidraw handleKeyboardGlobally={true} />);
+
+      const rect = API.createElement({
+        type: "rectangle",
+        notes: "first version",
+      });
+      API.updateScene({
+        elements: [rect],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+      expect(API.getUndoStack().length).toBe(1);
+      expect(API.getRedoStack().length).toBe(0);
+
+      API.setSelectedElements([rect]);
+      const notes = screen.getByLabelText("Notes") as HTMLTextAreaElement;
+      expect(notes.value).toBe("first version");
+      // typed characters stay local; the whole note lands on blur as one write
+      notes.focus();
+      fireEvent.change(notes, { target: { value: "about this box" } });
+      fireEvent.blur(notes);
+      await act(async () => {});
+
+      expect(h.elements[0].notes).toBe("about this box");
+      expect(API.getUndoStack().length).toBe(2); // seeding + the one note edit
+      expect(API.getRedoStack().length).toBe(0);
+
+      await act(async () => {
+        Keyboard.undo();
+      });
+      await act(async () => {});
+
+      // one undo takes back the whole edit, back to the note it started from
+      expect(h.elements[0].notes).toBe("first version");
+      expect(API.getUndoStack().length).toBe(1);
+      expect(API.getRedoStack().length).toBe(1);
+
+      await act(async () => {
+        Keyboard.redo();
+      });
+      await act(async () => {});
+
+      expect(h.elements[0].notes).toBe("about this box");
+      expect(API.getUndoStack().length).toBe(2);
+      expect(API.getRedoStack().length).toBe(0);
     });
 
     it("should not modify anything on unrelated appstate change", async () => {

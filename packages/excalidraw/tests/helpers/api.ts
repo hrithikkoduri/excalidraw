@@ -220,6 +220,7 @@ export class API {
       ? ExcalidrawFreeDrawElement["strokeOptions"]
       : never;
     locked?: boolean;
+    notes?: ExcalidrawGenericElement["notes"];
     fileId?: T extends "image" ? string : never;
     scale?: T extends "image" ? ExcalidrawImageElement["scale"] : never;
     status?: T extends "image" ? ExcalidrawImageElement["status"] : never;
@@ -307,6 +308,8 @@ export class API {
       opacity: rest.opacity ?? appState.currentItemOpacity,
       boundElements: rest.boundElements ?? null,
       locked: rest.locked ?? false,
+      // only present when asked for, so unset elements keep their old shape
+      ...(rest.notes === undefined ? {} : { notes: rest.notes }),
       created: rest.created === undefined ? getUpdatedTimestamp() : rest.created,
     };
     switch (type) {
