@@ -236,6 +236,24 @@ describe("editing a note from the styles panel", () => {
     expect(API.getUndoStack().length).toBe(1);
   });
 
+  it("sits inside the panel's flex row as a full-width, shrinkable field", async () => {
+    await renderWithElement();
+    const input = noteInput()!;
+
+    // the CSS cannot be asserted in jsdom (no stylesheets are loaded), so
+    // this holds the markup contract the stylesheet keys off: without the
+    // fieldset class, `flex`/`min-width` in styles.scss match nothing and the
+    // field goes back to overflowing the panel
+    const fieldset = input.closest("fieldset");
+    expect(fieldset).toHaveClass("element-note-fieldset");
+    expect(input).toHaveClass("TextInput", "element-note-input");
+    // the panel's rounded container is the styles island the panel renders in
+    expect(input.closest(".selected-shape-actions")).not.toBeNull();
+    // the placeholder and typed text share the one box, no fixed inline width
+    expect(input.getAttribute("style")).toBeNull();
+    expect(input.getAttribute("maxlength")).toBe("500");
+  });
+
   it("commits once on Enter without a second entry on blur", async () => {
     await renderWithElement();
     const input = noteInput()!;

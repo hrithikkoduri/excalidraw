@@ -882,12 +882,11 @@ export const actionChangeNote = register<NoteActionData>({
     };
 
     return (
-      <fieldset>
+      <fieldset className="element-note-fieldset">
         <legend>{t("labels.notes.label")}</legend>
         <input
           type="text"
-          className="TextInput"
-          style={{ width: "100%" }}
+          className="TextInput element-note-input"
           data-testid="element-note-input"
           placeholder={t("labels.notes.hint")}
           maxLength={MAX_ELEMENT_NOTE_LENGTH}
