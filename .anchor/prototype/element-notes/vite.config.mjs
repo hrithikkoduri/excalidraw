@@ -6,7 +6,7 @@ import { defineConfig, loadConfigFromFile, mergeConfig } from "vite";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = "/home/user/repo/excalidraw/excalidraw-app/vite.config.mts";
 // Plugins that only matter to the real app (offline caching, error reporting, lint and type checks, HTML rewrites) are left out.
-const SKIP = /pwa|sentry|checker|eslint|html|inspect|visualizer|compression/i;
+const SKIP = /pwa|sentry|checker|eslint|html|inspect|visualizer|compression|sitemap/i;
 
 export default defineConfig(async (env) => {
   const loaded = await loadConfigFromFile(env, app).catch(() => null);
