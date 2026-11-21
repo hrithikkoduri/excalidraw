@@ -232,6 +232,28 @@ body.excalidraw-cursor-resize * {
       padding: 0;
       border: none;
     }
+
+    // The note field is a text input, so it inherits the global
+    // `input[type="text"]` rule's 0.75rem padding and 1.5px border per side.
+    // Under the default content-box those sit outside a width:100% field and
+    // push its right edge 27px past the panel, clipping the placeholder.
+    // box-sizing: border-box keeps the field inside the panel; the smaller
+    // padding and font keep the placeholder and the typed text inside it.
+    // The fieldset is a flex item of the `.buttonList` row next to it, so it
+    // takes a full row and may shrink below its content.
+    .element-note-fieldset {
+      flex: 1 0 100%;
+      min-width: 0;
+    }
+
+    .element-note-input {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      padding: 0.25rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+    }
   }
 
   .divider {

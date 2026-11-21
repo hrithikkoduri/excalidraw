@@ -93,7 +93,7 @@ const registerTooltipWindowCleanup = (ownerWindow: Window) => {
   }
   const dropIfOwned = () => {
     if (HYPERLINK_TOOLTIP_OWNER_WINDOW === ownerWindow) {
-      clearHyperlinkTooltip();
+      clearElementTooltip();
     }
   };
   const onPointerOut = (event: MouseEvent) => {
@@ -440,13 +440,19 @@ export const getContextMenuLabel = (
   return label;
 };
 
-let HYPERLINK_TOOLTIP_TIMEOUT_ID: number | null = null;
-export const showHyperlinkTooltip = (
-  element: NonDeletedExcalidrawElement,
-  appState: AppState,
-  elementsMap: ElementsMap,
+let ELEMENT_TOOLTIP_TIMEOUT_ID: number | null = null;
+
+/**
+ * Shows the one canvas-element tooltip, after the hover delay. `render` paints
+ * it and returns whether it did (an element whose link/note went away does
+ * not). Both the link tooltip and the note tooltip go through here so they
+ * share one owner record and one node: whichever is hovered last wins, and
+ * the other cannot leave a stale tooltip behind.
+ */
+const showElementTooltip = (
   ownerDocument: Document,
   owner: HyperlinkTooltipOwner,
+  render: () => boolean,
 ) => {
   const ownerWindow = getTargetWindow(ownerDocument);
   if (!ownerWindow) {
@@ -457,22 +463,46 @@ export const showHyperlinkTooltip = (
   // another App would stay visible forever, as that App no longer receives
   // the pointer events that would hide it.
   if (HYPERLINK_TOOLTIP_OWNER && HYPERLINK_TOOLTIP_OWNER !== owner) {
-    clearHyperlinkTooltip();
-  } else if (HYPERLINK_TOOLTIP_TIMEOUT_ID) {
+    clearElementTooltip();
+  } else if (ELEMENT_TOOLTIP_TIMEOUT_ID) {
     // same owner -> only restart the timer, leaving an already visible
-    // tooltip alone (this runs on every pointer move over a link)
-    HYPERLINK_TOOLTIP_OWNER_WINDOW?.clearTimeout(HYPERLINK_TOOLTIP_TIMEOUT_ID);
-    HYPERLINK_TOOLTIP_TIMEOUT_ID = null;
+    // tooltip alone (this runs on every pointer move over the element)
+    HYPERLINK_TOOLTIP_OWNER_WINDOW?.clearTimeout(ELEMENT_TOOLTIP_TIMEOUT_ID);
+    ELEMENT_TOOLTIP_TIMEOUT_ID = null;
   }
   HYPERLINK_TOOLTIP_OWNER = owner;
   HYPERLINK_TOOLTIP_OWNER_DOCUMENT = ownerDocument;
   HYPERLINK_TOOLTIP_OWNER_WINDOW = ownerWindow;
   registerTooltipWindowCleanup(ownerWindow);
-  HYPERLINK_TOOLTIP_TIMEOUT_ID = ownerWindow.setTimeout(
-    () => renderTooltip(element, appState, elementsMap, ownerDocument, owner),
-    HYPERLINK_TOOLTIP_DELAY,
-  );
+  ELEMENT_TOOLTIP_TIMEOUT_ID = ownerWindow.setTimeout(() => {
+    ELEMENT_TOOLTIP_TIMEOUT_ID = null;
+    // ownership may have been cleared or taken over while the timer was
+    // pending (pointer left the window or another App showed its own
+    // tooltip) -> don't render a stale tooltip in an unfocused window
+    if (HYPERLINK_TOOLTIP_OWNER !== owner) {
+      return;
+    }
+    const didRender = render();
+    IS_HYPERLINK_TOOLTIP_VISIBLE = didRender;
+    if (!didRender) {
+      // a declined render (an element whose link/note went away) must not leave
+      // a tooltip from a previous owner on screen: `clearElementTooltip` only
+      // hides when the flag says visible, so a stale node would never go away
+      hideDocumentTooltip(ownerDocument);
+    }
+  }, HYPERLINK_TOOLTIP_DELAY);
 };
+
+export const showHyperlinkTooltip = (
+  element: NonDeletedExcalidrawElement,
+  appState: AppState,
+  elementsMap: ElementsMap,
+  ownerDocument: Document,
+  owner: HyperlinkTooltipOwner,
+) =>
+  showElementTooltip(ownerDocument, owner, () =>
+    renderTooltip(element, appState, elementsMap, ownerDocument, owner),
+  );
 
 const renderTooltip = (
   element: NonDeletedExcalidrawElement,
@@ -481,15 +511,8 @@ const renderTooltip = (
   ownerDocument: Document,
   owner: HyperlinkTooltipOwner,
 ) => {
-  HYPERLINK_TOOLTIP_TIMEOUT_ID = null;
-  // ownership may have been cleared or taken over while the timer was
-  // pending (pointer left the window or another App showed its own
-  // tooltip) -> don't render a stale tooltip in an unfocused window
-  if (HYPERLINK_TOOLTIP_OWNER !== owner) {
-    return;
-  }
   if (!element.link) {
-    return;
+    return false;
   }
 
   const tooltipDiv = getTooltipDiv(ownerDocument);
@@ -525,12 +548,60 @@ const renderTooltip = (
   );
   trackEvent("hyperlink", "tooltip", "link-icon");
 
-  IS_HYPERLINK_TOOLTIP_VISIBLE = true;
+  return true;
 };
-const clearHyperlinkTooltip = () => {
-  if (HYPERLINK_TOOLTIP_TIMEOUT_ID) {
-    HYPERLINK_TOOLTIP_OWNER_WINDOW?.clearTimeout(HYPERLINK_TOOLTIP_TIMEOUT_ID);
-    HYPERLINK_TOOLTIP_TIMEOUT_ID = null;
+
+/**
+ * Shows an element's note in the canvas tooltip, above the element. The text
+ * goes in as `textContent`, so it always renders as plain text.
+ */
+export const showNoteTooltip = (
+  element: NonDeletedExcalidrawElement,
+  appState: AppState,
+  elementsMap: ElementsMap,
+  ownerDocument: Document,
+  owner: HyperlinkTooltipOwner,
+) =>
+  showElementTooltip(ownerDocument, owner, () =>
+    renderNoteTooltip(element, appState, elementsMap, ownerDocument),
+  );
+
+const renderNoteTooltip = (
+  element: NonDeletedExcalidrawElement,
+  appState: AppState,
+  elementsMap: ElementsMap,
+  ownerDocument: Document,
+) => {
+  const note = element.note?.trim();
+  if (!note) {
+    return false;
+  }
+
+  const tooltipDiv = getTooltipDiv(ownerDocument);
+
+  tooltipDiv.classList.add(TOOLTIP_VISIBLE_CLASS);
+  tooltipDiv.style.maxWidth = "20rem";
+  tooltipDiv.textContent = note;
+
+  const [x1, y1, x2] = getElementAbsoluteCoords(element, elementsMap);
+  const topCenter = sceneCoordsToViewportCoords(
+    { sceneX: (x1 + x2) / 2, sceneY: y1 },
+    appState,
+  );
+
+  updateTooltipPosition(
+    tooltipDiv,
+    { left: topCenter.x, top: topCenter.y, width: 0, height: 0 },
+    "top",
+  );
+
+  return true;
+};
+
+const clearElementTooltip = () => {
+  if (ELEMENT_TOOLTIP_TIMEOUT_ID) {
+    HYPERLINK_TOOLTIP_OWNER_WINDOW?.clearTimeout(ELEMENT_TOOLTIP_TIMEOUT_ID);
+    ELEMENT_TOOLTIP_TIMEOUT_ID = null;
   }
   if (IS_HYPERLINK_TOOLTIP_VISIBLE && HYPERLINK_TOOLTIP_OWNER_DOCUMENT) {
     IS_HYPERLINK_TOOLTIP_VISIBLE = false;
@@ -547,7 +618,7 @@ export const hideHyperlinkToolip = (owner?: HyperlinkTooltipOwner) => {
   if (HYPERLINK_TOOLTIP_OWNER && HYPERLINK_TOOLTIP_OWNER !== owner) {
     return;
   }
-  clearHyperlinkTooltip();
+  clearElementTooltip();
 };
 
 const shouldHideLinkPopup = (

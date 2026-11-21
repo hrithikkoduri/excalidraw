@@ -207,6 +207,7 @@ export const SelectedShapeActions = ({
             {renderAction("group")}
             {renderAction("ungroup")}
             {predicates.link && renderAction("hyperlink")}
+            {predicates.note && renderAction("changeNote")}
             {predicates.cropEditor && renderAction("cropEditor")}
             {predicates.lineEditor && renderAction("toggleLinearEditor")}
           </div>
@@ -567,6 +568,7 @@ const CombinedExtraActions = ({
                   {renderAction("group")}
                   {renderAction("ungroup")}
                   {predicates.linkSingleOnly && renderAction("hyperlink")}
+                  {predicates.note && renderAction("changeNote")}
                   {predicates.cropEditor && renderAction("cropEditor")}
                   {showDuplicate && renderAction("duplicateSelection")}
                   {showDelete && renderAction("deleteSelectedElements")}

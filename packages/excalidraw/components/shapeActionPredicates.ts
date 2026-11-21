@@ -176,6 +176,7 @@ export const getShapeActionPredicates = (
     // the two flags below.
     link: singleSelected || isSingleElementBoundContainer,
     linkSingleOnly: singleSelected,
+    note: singleSelected,
     cropEditor:
       !appState.croppingElementId &&
       singleSelected &&

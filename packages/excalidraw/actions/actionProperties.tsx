@@ -1,6 +1,6 @@
 import { pointFrom } from "@excalidraw/math";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   BUCKET_FILL_BACKGROUND_PICKS,
@@ -170,6 +170,8 @@ import {
   restoreCaretPosition,
 } from "../hooks/useTextEditorFocus";
 
+import { MAX_ELEMENT_NOTE_LENGTH, normalizeNoteText } from "../data/restore";
+
 import { getShortcutKey } from "../shortcut";
 
 import {
@@ -181,6 +183,14 @@ import { register } from "./register";
 import type { AppClassProperties, AppState, Primitive } from "../types";
 
 const FONT_SIZE_RELATIVE_INCREASE_STEP = 0.1;
+
+/** trim and cap a note; an emptied note is stored as "", like restore does */
+const normalizeNote = (value: string | null | undefined): string => {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return normalizeNoteText(value);
+};
 
 const getStylesPanelInfo = (app: AppClassProperties) => {
   const stylesPanelMode = deriveStylesPanelMode(app.editorInterface);
@@ -769,6 +779,128 @@ export const actionChangeStrokeWidth = register<StrokeWidthKey>({
       </div>
     </fieldset>
   ),
+});
+
+type NoteActionData = { id: ExcalidrawElement["id"]; note: string };
+
+export const actionChangeNote = register<NoteActionData>({
+  name: "changeNote",
+  label: "labels.notes.label",
+  trackEvent: false,
+  perform: (elements, appState, value) => {
+    // the write is addressed to one element id, not to whatever happens to be
+    // selected by the time the panel commits: a selection change (and the
+    // unmount that follows a deselect) can happen before the field blurs
+    if (!value?.id) {
+      return false;
+    }
+    const note = normalizeNote(value.note);
+
+    return {
+      elements: elements.map((element) =>
+        element.id === value.id ? newElementWith(element, { note }) : element,
+      ),
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    };
+  },
+  PanelComponent: ({ elements, appState, updateData, app }) => {
+    const selected = app.scene.getSelectedElements(appState);
+    const element = selected.length === 1 ? selected[0] : null;
+    const elementId = element?.id ?? null;
+    const committed = element?.note || "";
+
+    // the draft is bound to the element it was typed for. Keystrokes stay
+    // here, so one undo entry is recorded per committed edit instead of one
+    // per keystroke; the id makes the pending text survive a selection change
+    // or an unmount (it is flushed to the element it was typed for).
+    const [draft, setDraft] = useState<{
+      id: ExcalidrawElement["id"] | null;
+      value: string;
+    }>({ id: elementId, value: committed });
+
+    const draftRef = useRef(draft);
+    draftRef.current = draft;
+    const latest = useRef({ elements, updateData });
+    latest.current = { elements, updateData };
+
+    const flushPending = () => {
+      const pending = draftRef.current;
+      if (!pending.id) {
+        return;
+      }
+      // clearing first makes a second flush (blur and unmount/deselect in the
+      // same tick) a no-op
+      draftRef.current = { id: null, value: "" };
+      const note = normalizeNote(pending.value);
+      const target = latest.current.elements.find((el) => el.id === pending.id);
+      if (!target || normalizeNote(target.note) === note) {
+        return;
+      }
+      latest.current.updateData({ id: pending.id, note });
+    };
+
+    const previousId = useRef(elementId);
+
+    useEffect(() => {
+      const movedToAnotherElement = previousId.current !== elementId;
+      previousId.current = elementId;
+
+      if (movedToAnotherElement) {
+        // the text typed for the previous element follows that element, not
+        // whichever one the user just selected
+        flushPending();
+      }
+      // an unchanged id with a changed value is an undo/redo (or another
+      // editor): the element's value wins and the draft is dropped
+      draftRef.current = { id: elementId, value: committed };
+      setDraft(draftRef.current);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [elementId, committed]);
+
+    // a deselect unmounts the field without firing blur
+    useEffect(() => flushPending, []);
+
+    const commit = () => {
+      const typed = draftRef.current;
+      flushPending();
+      // show the normalized text the element now holds
+      if (typed.id) {
+        setDraft({ id: typed.id, value: normalizeNote(typed.value) });
+      }
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== KEYS.ENTER || event.shiftKey) {
+        return;
+      }
+      // don't commit while an IME composition is being confirmed
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {
+        return;
+      }
+      event.preventDefault();
+      commit();
+    };
+
+    return (
+      <fieldset className="element-note-fieldset">
+        <legend>{t("labels.notes.label")}</legend>
+        <input
+          type="text"
+          className="TextInput element-note-input"
+          data-testid="element-note-input"
+          placeholder={t("labels.notes.hint")}
+          maxLength={MAX_ELEMENT_NOTE_LENGTH}
+          // a draft flushed to another element must not show in this one
+          value={draft.id === elementId ? draft.value : committed}
+          onChange={(event) =>
+            setDraft({ id: elementId, value: event.target.value })
+          }
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+        />
+      </fieldset>
+    );
+  },
 });
 
 export const actionChangeSloppiness = register<ExcalidrawElement["roughness"]>({

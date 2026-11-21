@@ -335,6 +335,7 @@ import {
 import { fileOpen } from "../data/filesystem";
 import {
   showHyperlinkTooltip,
+  showNoteTooltip,
   hideHyperlinkToolip,
   Hyperlink,
 } from "../components/hyperlink/Hyperlink";
@@ -6568,11 +6569,14 @@ class App extends React.Component<AppProps, AppState> {
   };
 
   /**
-   * Applies (or clears) the element-link hover affordances — pointer cursor
-   * and tooltip — based on the current `hitLinkElement`. Returns whether a
-   * link is being hovered.
+   * Applies (or clears) the element hover affordances — the pointer cursor
+   * and tooltip — from the current `hitLinkElement` and the element under the
+   * pointer. A hovered link wins over a hovered note; both share one tooltip.
+   * Returns whether a link is being hovered.
    */
-  private applyElementLinkHoverAffordance = (): boolean => {
+  private applyElementLinkHoverAffordance = (
+    hitElement: NonDeleted<ExcalidrawElement> | null,
+  ): boolean => {
     if (
       this.hitLinkElement &&
       !this.state.selectedElementIds[this.hitLinkElement.id]
@@ -6588,7 +6592,17 @@ class App extends React.Component<AppProps, AppState> {
       );
       return true;
     }
-    hideHyperlinkToolip(this.host.hyperlinkTooltipOwner);
+    if (hitElement?.note) {
+      showNoteTooltip(
+        hitElement,
+        this.state,
+        this.scene.getNonDeletedElementsMap(),
+        this.ownerDocument,
+        this.host.hyperlinkTooltipOwner,
+      );
+    } else {
+      hideHyperlinkToolip(this.host.hyperlinkTooltipOwner);
+    }
     return false;
   };
 
@@ -6661,7 +6675,7 @@ class App extends React.Component<AppProps, AppState> {
     this.hitLinkElement = this.isLinksEnabled()
       ? this.getElementLinkAtPosition(scenePointer, hitElementMightBeLocked)
       : undefined;
-    if (!this.applyElementLinkHoverAffordance()) {
+    if (!this.applyElementLinkHoverAffordance(hitElementMightBeLocked)) {
       this.cursor.reset();
     }
   };
@@ -7272,7 +7286,7 @@ class App extends React.Component<AppProps, AppState> {
       );
     }
 
-    if (!this.applyElementLinkHoverAffordance()) {
+    if (!this.applyElementLinkHoverAffordance(hitElementMightBeLocked)) {
       if (isLaserTool) {
         return;
       }

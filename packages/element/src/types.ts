@@ -83,6 +83,8 @@ type _ExcalidrawElementBase = Readonly<{
   created: number | null;
   link: string | null;
   locked: boolean;
+  /** free-form note the user attaches to the element; absent when empty */
+  note?: string;
   customData?: Record<string, any>;
 }>;
 
