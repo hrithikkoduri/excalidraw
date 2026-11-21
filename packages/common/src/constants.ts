@@ -222,6 +222,8 @@ export const FRAME_STYLE = {
   nameLineHeight: 1.25,
 };
 
+export const ELEMENT_NOTES_MAX_LENGTH = 500;
+
 export const MIN_FONT_SIZE = 1;
 export const DEFAULT_FONT_SIZE = 20;
 export const STICKY_NOTE_MIN_FONT_SIZE = 16;

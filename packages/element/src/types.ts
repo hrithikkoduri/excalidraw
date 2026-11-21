@@ -83,6 +83,10 @@ type _ExcalidrawElementBase = Readonly<{
   created: number | null;
   link: string | null;
   locked: boolean;
+  /** Short plain-text note for collaborators. Absent when there is no note,
+      never null or an empty string. Trimmed to ELEMENT_NOTES_MAX_LENGTH on
+      load; not drawn into image exports. */
+  notes?: string;
   customData?: Record<string, any>;
 }>;
 

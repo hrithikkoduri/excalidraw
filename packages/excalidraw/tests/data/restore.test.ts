@@ -103,6 +103,58 @@ describe("restoreElements", () => {
     expect(restored[0].id).not.toBe(restored[1].id);
   });
 
+  describe("notes", () => {
+    const rect = () =>
+      API.createElement({ type: "rectangle", index: "a0" as FractionalIndex });
+
+    it("restores a legacy element without notes unchanged", () => {
+      // a scene saved before notes existed: the key is not in the JSON at all
+      const input: ImportedDataState = JSON.parse(
+        JSON.stringify({ elements: [rect()] }),
+      );
+      const [restored] = restore.restoreElements(input.elements, null);
+
+      // no key is added, and every saved value survives; `boundElements` is
+      // left out because restore has always normalised null to [] there
+      const { boundElements: _saved, ...saved } = input.elements![0];
+      const { boundElements: _restored, ...restoredRest } = restored;
+
+      expect(Object.keys(restored).sort()).toEqual(
+        Object.keys(input.elements![0]).sort(),
+      );
+      expect(restoredRest).toEqual(saved);
+    });
+
+    it("preserves an explicit note", () => {
+      const element = { ...rect(), notes: "Owned by Payments" };
+      const [restored] = restore.restoreElements([element], null);
+
+      expect(restored.notes).toBe("Owned by Payments");
+    });
+
+    it("drops a non-string note and an empty one", () => {
+      // a hand-edited file can carry anything; restore must drop it
+      const withNumber = {
+        ...rect(),
+        notes: 42,
+      } as unknown as ExcalidrawElement;
+      const withEmpty = { ...rect(), notes: "" };
+
+      const [numberRestored] = restore.restoreElements([withNumber], null);
+      const [emptyRestored] = restore.restoreElements([withEmpty], null);
+
+      expect(numberRestored).not.toHaveProperty("notes");
+      expect(emptyRestored).not.toHaveProperty("notes");
+    });
+
+    it("trims a 600 character note to 500", () => {
+      const element = { ...rect(), notes: "x".repeat(600) };
+      const [restored] = restore.restoreElements([element], null);
+
+      expect(restored.notes).toBe("x".repeat(500));
+    });
+  });
+
   it("should restore transparent sticky note stroke as black", () => {
     const stickyNote = {
       ...API.createElement({ type: "stickynote" }),

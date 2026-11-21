@@ -34,6 +34,7 @@ import {
   type StrokeWidthKey,
   isTransparent,
   DEFAULT_ZOOM,
+  ELEMENT_NOTES_MAX_LENGTH,
 } from "@excalidraw/common";
 import {
   calculateFixedPointForNonElbowArrowBinding,
@@ -448,8 +449,9 @@ const repairBinding = <T extends ExcalidrawArrowElement>(
 };
 
 const restoreElementWithProperties = <
-  T extends Required<Omit<ExcalidrawElement, "customData">> & {
+  T extends Required<Omit<ExcalidrawElement, "customData" | "notes">> & {
     customData?: ExcalidrawElement["customData"];
+    notes?: ExcalidrawElement["notes"];
     /** @deprecated */
     boundElementIds?: readonly ExcalidrawElement["id"][];
     /** @deprecated */
@@ -534,6 +536,15 @@ const restoreElementWithProperties = <
   delete ret.boundElementIds;
   // not an element prop, but used to leak onto linear elements
   delete ret.moveMidPointsWithElement;
+
+  // absent when unused, like customData: a non-string or empty value is
+  // dropped and an over-long one is trimmed, so a scene without notes restores
+  // to exactly the shape it was saved with
+  if (typeof ret.notes === "string" && ret.notes) {
+    ret.notes = ret.notes.slice(0, ELEMENT_NOTES_MAX_LENGTH);
+  } else {
+    delete ret.notes;
+  }
 
   return ret;
 };
