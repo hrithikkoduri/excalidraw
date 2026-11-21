@@ -5,6 +5,8 @@ import {
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
+
+import { pointFrom, pointRotateRads } from "@excalidraw/math";
 import { isElementLink } from "@excalidraw/element";
 import { createPlaceholderEmbeddableLabel } from "@excalidraw/element";
 import { getBoundTextElement } from "@excalidraw/element";
@@ -34,6 +36,8 @@ import type { RenderEnvironment } from "@excalidraw/element/renderEnvironment";
 
 import type { ElementRenderState } from "@excalidraw/element";
 
+import type { GlobalPoint } from "@excalidraw/math";
+
 import type {
   ElementsMap,
   ExcalidrawElement,
@@ -48,6 +52,7 @@ import {
 } from "../components/hyperlink/helpers";
 
 import {
+  DEFAULT_SELECTION_COLOR,
   bootstrapCanvas,
   getNormalizedCanvasDimensions,
   snapScrollToDevicePixels,
@@ -330,6 +335,90 @@ const renderLinkIcon = (
     context.restore();
   }
 };
+
+/** the note badge's size, in screen pixels (kept constant across zoom, like the link icon) */
+const NOTE_MARKER_SIZE = 16;
+
+/**
+ * Draws the badge that marks an element as having a note, just outside its
+ * top-right corner. Editor chrome, not content: the caller skips it while
+ * exporting, and the SVG renderer never runs this code.
+ */
+const renderNoteMarker = (
+  element: NonDeletedExcalidrawElement,
+  context: CanvasRenderingContext2D,
+  appState: StaticCanvasAppState,
+  elementsMap: ElementsMap,
+  renderState: ElementRenderState,
+  renderLinks: boolean,
+) => {
+  if (!element.notes) {
+    return;
+  }
+
+  const zoom = appState.zoom.value > 1 ? appState.zoom.value : 1;
+  const size = NOTE_MARKER_SIZE / zoom;
+  const half = size / 2;
+  const margin = 4 / zoom;
+
+  const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
+
+  // the link badge already sits at the top-right, so step aside for it
+  const hasLinkBadge =
+    !!element.link &&
+    renderLinks !== false &&
+    !appState.selectedElementIds[element.id];
+
+  const [centerX, centerY] = pointRotateRads(
+    pointFrom<GlobalPoint>(
+      x2 +
+        renderState.offset.x +
+        margin +
+        half -
+        (hasLinkBadge ? size + margin : 0),
+      y1 + renderState.offset.y - margin - half,
+    ),
+    pointFrom<GlobalPoint>((x1 + x2) / 2, (y1 + y2) / 2),
+    element.angle,
+  );
+
+  context.save();
+  context.translate(appState.scrollX + centerX, appState.scrollY + centerY);
+  context.rotate(element.angle);
+  context.globalAlpha = renderState.opacity;
+
+  context.beginPath();
+  if (context.roundRect) {
+    context.roundRect(-half, -half, size, size, size / 4);
+  } else {
+    context.rect(-half, -half, size, size);
+  }
+  context.fillStyle = COLOR_WHITE;
+  context.fill();
+  context.strokeStyle = DEFAULT_SELECTION_COLOR;
+  context.lineWidth = size / 12;
+  context.stroke();
+
+  // two short lines, reading as a note glyph
+  const padding = size / 4;
+  const lineHeight = Math.max(1, size / 9);
+  context.fillStyle = DEFAULT_SELECTION_COLOR;
+  context.fillRect(
+    -half + padding,
+    -size * 0.18,
+    size - padding * 2,
+    lineHeight,
+  );
+  context.fillRect(
+    -half + padding,
+    size * 0.08,
+    (size - padding * 2) * 0.6,
+    lineHeight,
+  );
+
+  context.restore();
+};
+
 const _renderStaticScene = ({
   canvas,
   rc,
@@ -517,6 +606,16 @@ const _renderStaticScene = ({
             getRenderEnvironment(renderConfig.renderEnvironment),
           );
         }
+        if (!isExporting) {
+          renderNoteMarker(
+            element,
+            context,
+            appState,
+            elementsMap,
+            renderState,
+            renderConfig.renderLinks !== false,
+          );
+        }
       } catch (error: any) {
         logElementRenderError(error, element);
       }
@@ -582,6 +681,16 @@ const _renderStaticScene = ({
             );
           }
         });
+        if (!isExporting) {
+          renderNoteMarker(
+            element,
+            context,
+            appState,
+            elementsMap,
+            renderState,
+            renderConfig.renderLinks !== false,
+          );
+        }
       } catch (error: any) {
         logElementRenderError(error, element);
       }
