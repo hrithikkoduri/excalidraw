@@ -79,6 +79,15 @@ export const canCreateLinkFromElements = (
   return false;
 };
 
+/**
+ * Whether an element carries a note worth showing. An empty or whitespace-only
+ * note counts as none: the editor never stores an empty note, but a drawing
+ * could arrive with one from elsewhere.
+ */
+export const hasNote = (
+  element: Pick<ExcalidrawElement, "note"> | null | undefined,
+): boolean => !!element?.note?.trim();
+
 export const isElementLink = (url: string) => {
   try {
     const _url = new URL(url);

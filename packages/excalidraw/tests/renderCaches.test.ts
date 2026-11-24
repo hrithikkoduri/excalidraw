@@ -289,3 +289,88 @@ describe("link icon cache", () => {
     expect(iconBlits(sceneB, b.canvases)).toHaveLength(0);
   });
 });
+
+/**
+ * The note badge is an editor affordance painted into the static pass beside
+ * the link icon. It must be present for a noted element in the editor, and
+ * absent from export renders and from view mode. Asserted differentially
+ * against an identical badge-free render, so it does not depend on which
+ * rounded-rect call the canvas shim happens to implement.
+ */
+describe("note badge", () => {
+  const rect = (note?: string) =>
+    newElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 50,
+      note,
+    }) as NonDeletedExcalidrawElement;
+
+  /** path-shape calls the badge itself makes: one rounded square per badge */
+  const pathShapeCalls = (scene: HTMLCanvasElement) => {
+    const context = scene.getContext("2d") as unknown as {
+      rect: { mock: { calls: unknown[][] } };
+      roundRect?: { mock: { calls: unknown[][] } };
+    };
+    return (
+      context.rect.mock.calls.length +
+      (context.roundRect?.mock?.calls.length ?? 0)
+    );
+  };
+
+  const renderAndCount = (
+    elements: NonDeletedExcalidrawElement[],
+    mutate?: (config: StaticSceneRenderConfig) => StaticSceneRenderConfig,
+  ) => {
+    const { env } = makeEnv();
+    const scene = makeScene();
+    const config = makeConfig(elements, {
+      scale: 1,
+      renderEnvironment: env,
+      canvas: scene,
+    });
+    renderStaticScene(mutate ? mutate(config) : config);
+    return pathShapeCalls(scene);
+  };
+
+  it("paints one badge per noted element in the editor", () => {
+    const badgeFree = renderAndCount([rect(), rect()]);
+    const noted = renderAndCount([rect("a note"), rect("another note")]);
+
+    expect(noted - badgeFree).toBe(2);
+  });
+
+  it("paints nothing for elements without a note, or with an empty one", () => {
+    const badgeFree = renderAndCount([rect(), rect()]);
+
+    expect(renderAndCount([rect(undefined), rect("   ")])).toBe(badgeFree);
+  });
+
+  it("never paints into an export render", () => {
+    const exported = renderAndCount([rect("a note")], (config) => ({
+      ...config,
+      renderConfig: { ...config.renderConfig, isExporting: true },
+    }));
+    const badgeFreeExport = renderAndCount([rect()], (config) => ({
+      ...config,
+      renderConfig: { ...config.renderConfig, isExporting: true },
+    }));
+
+    expect(exported).toBe(badgeFreeExport);
+  });
+
+  it("does not paint in view mode", () => {
+    const inViewMode = renderAndCount([rect("a note")], (config) => ({
+      ...config,
+      appState: { ...config.appState, viewModeEnabled: true },
+    }));
+    const badgeFreeViewMode = renderAndCount([rect()], (config) => ({
+      ...config,
+      appState: { ...config.appState, viewModeEnabled: true },
+    }));
+
+    expect(inViewMode).toBe(badgeFreeViewMode);
+  });
+});

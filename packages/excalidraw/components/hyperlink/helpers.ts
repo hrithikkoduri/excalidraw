@@ -1,7 +1,7 @@
 import { pointFrom, pointRotateRads } from "@excalidraw/math";
 
 import { MIME_TYPES } from "@excalidraw/common";
-import { getElementAbsoluteCoords } from "@excalidraw/element";
+import { getElementAbsoluteCoords, hasNote } from "@excalidraw/element";
 
 import { hitElementBoundingBox } from "@excalidraw/element";
 
@@ -18,6 +18,13 @@ import type {
 import type { AppState } from "../../types";
 
 export const DEFAULT_LINK_SIZE = 12;
+
+/** on-screen size of the note badge, in CSS px before zoom/scale */
+export const NOTE_BADGE_SIZE = 18;
+/** gap between the element's corner and the badge, in CSS px before zoom */
+export const NOTE_BADGE_GAP = 4;
+/** extra slack around the badge for pointer hits, in CSS px before zoom */
+export const NOTE_BADGE_HIT_THRESHOLD = 4;
 
 const EXTERNAL_LINK_SRC = `data:${MIME_TYPES.svg}, ${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1971c2" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="feather feather-external-link"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
@@ -177,6 +184,78 @@ export const isPointHittingLinkIcon = (
     y > linkY - threshold &&
     y < linkY + linkHeight + threshold;
   return hitLink;
+};
+
+/**
+ * Whether an element should show a note badge right now. The badge is an editor
+ * affordance, not part of the drawing: it is never drawn while exporting, in
+ * view mode, or for an element that is being edited elsewhere on the canvas.
+ */
+export const shouldRenderNoteBadge = (
+  element: NonDeletedExcalidrawElement,
+  appState: Pick<AppState, "viewModeEnabled">,
+  isExporting = false,
+): boolean => !isExporting && !appState.viewModeEnabled && hasNote(element);
+
+/**
+ * Where an element's note badge sits: a constant-size square anchored to the
+ * element's top-right corner, outside its bounds, rotated with the element so
+ * it stays glued to the corner. Scene units, so the on-screen size is constant
+ * across zoom (same approach as `getLinkHandleFromCoords`).
+ */
+export const getNoteBadgeFromCoords = (
+  [x1, y1, x2, y2]: Bounds,
+  angle: Radians,
+  appState: Pick<AppState, "zoom">,
+): Bounds => {
+  const zoom = appState.zoom.value > 1 ? appState.zoom.value : 1;
+  const size = NOTE_BADGE_SIZE / zoom;
+  // a small gap so the badge does not touch the element outline
+  const gap = NOTE_BADGE_GAP / zoom;
+  const centerX = (x1 + x2) / 2;
+  const centerY = (y1 + y2) / 2;
+
+  // top-right corner, nudged outwards on both axes
+  const x = x2 + gap;
+  const y = y1 - gap - size;
+
+  const [rotatedX, rotatedY] = pointRotateRads(
+    pointFrom(x + size / 2, y + size / 2),
+    pointFrom(centerX, centerY),
+    angle,
+  );
+
+  return [rotatedX - size / 2, rotatedY - size / 2, size, size];
+};
+
+/**
+ * Whether a scene-space point hits the note badge of an element that has one.
+ * Only badges that are actually drawn count (see `shouldRenderNoteBadge`).
+ */
+export const isPointHittingNoteBadge = (
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  appState: AppState,
+  [x, y]: GlobalPoint,
+) => {
+  if (!shouldRenderNoteBadge(element, appState)) {
+    return false;
+  }
+
+  const threshold = NOTE_BADGE_HIT_THRESHOLD / appState.zoom.value;
+  const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
+  const [badgeX, badgeY, badgeWidth, badgeHeight] = getNoteBadgeFromCoords(
+    [x1, y1, x2, y2],
+    element.angle,
+    appState,
+  );
+
+  return (
+    x > badgeX - threshold &&
+    x < badgeX + threshold + badgeWidth &&
+    y > badgeY - threshold &&
+    y < badgeY + threshold + badgeHeight
+  );
 };
 
 export const isPointHittingLink = (

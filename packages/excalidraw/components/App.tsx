@@ -413,7 +413,10 @@ import { isSidebarDockedAtom } from "./Sidebar/Sidebar";
 import { hideTooltip } from "./Tooltip";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
-import { isPointHittingLink } from "./hyperlink/helpers";
+import {
+  isPointHittingLink,
+  isPointHittingNoteBadge,
+} from "./hyperlink/helpers";
 import { AppHost } from "./App.host";
 import { CursorHint, CursorHints } from "./CursorHint";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
@@ -706,6 +709,8 @@ class App extends React.Component<AppProps, AppState> {
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
   hitLinkElement?: NonDeletedExcalidrawElement;
+  /** element whose note badge the pointer is over, if any */
+  hitNoteBadgeElement?: NonDeletedExcalidrawElement;
   lastPointerDownEvent: React.PointerEvent<HTMLElement> | null = null;
   /**
    * the handle of the resize in progress while `state.isResizing` — for UI
@@ -6500,6 +6505,44 @@ class App extends React.Component<AppProps, AppState> {
     }
   };
 
+  /**
+   * Opens the note dialog for one element. The element is passed to the action
+   * as its data, so the badge click reuses the same action (and dialog) as the
+   * context menu and the command palette instead of a second edit path.
+   */
+  openNoteDialogForElement = (element: NonDeletedExcalidrawElement) => {
+    this.actionManager.executeAction(actionElementNote, "ui", {
+      elementId: element.id,
+    });
+  };
+
+  /**
+   * The element whose note badge sits under the pointer, front-most first.
+   * Badges are painted on the static canvas, so hit testing is done in scene
+   * coordinates against the same geometry the painter uses.
+   */
+  getNoteBadgeAtPosition = (
+    scenePointer: Readonly<{ x: number; y: number }>,
+  ): NonDeletedExcalidrawElement | undefined => {
+    const elements = this.scene.getNonDeletedElements();
+    const elementsMap = this.scene.getNonDeletedElementsMap();
+
+    for (let index = elements.length - 1; index >= 0; index--) {
+      const element = elements[index];
+      if (
+        isPointHittingNoteBadge(
+          element,
+          elementsMap,
+          this.state,
+          pointFrom(scenePointer.x, scenePointer.y),
+        )
+      ) {
+        return element;
+      }
+    }
+    return undefined;
+  };
+
   private handleElementLinkClick = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
@@ -7273,6 +7316,15 @@ class App extends React.Component<AppProps, AppState> {
       );
     }
 
+    this.hitNoteBadgeElement = this.getNoteBadgeAtPosition(scenePointer);
+
+    // a badge is a smaller, more specific target than a link on the same
+    // element, so it claims the pointer affordance when both are hit
+    if (this.hitNoteBadgeElement) {
+      this.cursor.set(CURSOR_TYPE.POINTER);
+      return;
+    }
+
     if (!this.applyElementLinkHoverAffordance()) {
       if (isLaserTool) {
         return;
@@ -7964,6 +8016,47 @@ class App extends React.Component<AppProps, AppState> {
     this.maybeCleanupAfterMissingPointerUp(event.nativeEvent);
   };
 
+  /**
+   * Opens the note dialog when the pointer went down and up on the same badge.
+   * Like the link icon, a drag that starts on the badge is not a click.
+   */
+  private maybeHandleNoteBadgeClick = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ): boolean => {
+    if (!this.lastPointerDownEvent) {
+      return false;
+    }
+
+    // A click does not have to be preceded by a hover (touch, or a synthetic
+    // click), so both ends are tested directly rather than trusting the last
+    // pointer-move's hit.
+    const draggedDistance = pointDistance(
+      pointFrom(
+        this.lastPointerDownEvent.clientX,
+        this.lastPointerDownEvent.clientY,
+      ),
+      pointFrom(event.clientX, event.clientY),
+    );
+    if (draggedDistance > DRAGGING_THRESHOLD) {
+      return false;
+    }
+
+    const element = this.getNoteBadgeAtPosition(
+      viewportCoordsToSceneCoords(event, this.state),
+    );
+    if (
+      !element ||
+      this.getNoteBadgeAtPosition(
+        viewportCoordsToSceneCoords(this.lastPointerDownEvent, this.state),
+      )?.id !== element.id
+    ) {
+      return false;
+    }
+
+    this.openNoteDialogForElement(element);
+    return true;
+  };
+
   private handleCanvasPointerUp = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
@@ -7978,6 +8071,12 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.removePointer(event);
+
+    if (this.maybeHandleNoteBadgeClick(event)) {
+      this.lastPointerUpEvent = event;
+      return;
+    }
+
     this.lastPointerUpIsDoubleClick = this.isDoubleClick(
       this.lastPointerUpEvent,
       event,

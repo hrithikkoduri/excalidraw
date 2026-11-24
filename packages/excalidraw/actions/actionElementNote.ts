@@ -22,15 +22,23 @@ export const getNoteDialogTargetElement = (
 ): ExcalidrawElement | null =>
   getSelectedElements(elements, appState).at(-1) ?? null;
 
-export const actionElementNote = register({
+/**
+ * `formData` may name the element explicitly (the badge passes the element it
+ * is drawn for); otherwise the primary selected element is the target.
+ */
+type ElementNoteData = { elementId?: ExcalidrawElement["id"] } | null;
+
+export const actionElementNote = register<ElementNoteData>({
   name: "elementNote",
   label: (elements, appState) =>
     getNoteDialogTargetElement(elements, appState)?.note
       ? "elementNote.actionEdit"
       : "elementNote.action",
   icon: messageCircleIcon,
-  perform: (elements, appState) => {
-    const target = getNoteDialogTargetElement(elements, appState);
+  perform: (elements, appState, data) => {
+    const target = data?.elementId
+      ? elements.find((element) => element.id === data.elementId) ?? null
+      : getNoteDialogTargetElement(elements, appState);
 
     if (!target) {
       return false;

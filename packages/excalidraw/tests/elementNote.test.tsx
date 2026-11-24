@@ -2,19 +2,25 @@ import React from "react";
 
 import { KEYS } from "@excalidraw/common";
 
+import { sceneCoordsToViewportCoords } from "@excalidraw/common";
+import { getElementAbsoluteCoords } from "@excalidraw/element";
+
 import { Excalidraw } from "../index";
+import { getNoteBadgeFromCoords } from "../components/hyperlink/helpers";
 import {
   actionElementNote,
   getNoteDialogTargetElement,
 } from "../actions/actionElementNote";
 
 import { API } from "./helpers/api";
-import { Keyboard } from "./helpers/ui";
+import { Keyboard, Pointer } from "./helpers/ui";
 import { act, fireEvent, render, screen, unmountComponent } from "./test-utils";
 
 const { h } = window;
 
 unmountComponent();
+
+const mouse = new Pointer("mouse");
 
 const openNoteDialog = (elementId: string) => {
   API.setAppState({ openDialog: { name: "elementNote", elementId } });
@@ -152,13 +158,15 @@ describe("element note dialog", () => {
 
     // the action predicate keeps the menu and the palette entry hidden while
     // the dialog is open, and shows it again once it closes
-    expect(actionElementNote.predicate!(h.elements, h.state as any)).toBe(
-      false,
-    );
+    expect(
+      actionElementNote.predicate!(h.elements, h.state, {} as any, h.app),
+    ).toBe(false);
 
     API.setAppState({ openDialog: null });
 
-    expect(actionElementNote.predicate!(h.elements, h.state as any)).toBe(true);
+    expect(
+      actionElementNote.predicate!(h.elements, h.state, {} as any, h.app),
+    ).toBe(true);
   });
 
   it("does not offer Delete note when the element has none", async () => {
@@ -190,5 +198,72 @@ describe("getNoteDialogTargetElement", () => {
     expect(
       getNoteDialogTargetElement([first, second], { selectedElementIds: {} }),
     ).toBeNull();
+  });
+});
+
+describe("note badge", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+  });
+
+  afterEach(() => {
+    unmountComponent();
+  });
+
+  /** client coords of the centre of an element's badge, via the same helper
+      the static-canvas painter uses */
+  const badgeCenter = (element: ReturnType<typeof API.createElement>) => {
+    const elementsMap = h.app.scene.getNonDeletedElementsMap();
+    const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
+    const [x, y, width, height] = getNoteBadgeFromCoords(
+      [x1, y1, x2, y2],
+      element.angle,
+      h.state,
+    );
+    const { x: clientX, y: clientY } = sceneCoordsToViewportCoords(
+      { sceneX: x + width / 2, sceneY: y + height / 2 },
+      h.state,
+    );
+    return { clientX, clientY };
+  };
+
+  it("opens the note dialog when the badge is clicked", async () => {
+    const rectangle = API.createElement({ type: "rectangle", note: "a note" });
+    API.setElements([rectangle]);
+    API.setSelectedElements([]);
+
+    const { clientX, clientY } = badgeCenter(rectangle);
+    mouse.clickAt(clientX, clientY);
+
+    expect(h.state.openDialog).toEqual({
+      name: "elementNote",
+      elementId: rectangle.id,
+    });
+    // the click targets the element, so the dialog is showing its note
+    expect(getTextarea()?.value).toBe("a note");
+  });
+
+  it("does not open the dialog when there is no badge there", async () => {
+    const rectangle = API.createElement({ type: "rectangle" });
+    API.setElements([rectangle]);
+    API.setSelectedElements([]);
+
+    const { clientX, clientY } = badgeCenter(rectangle);
+    mouse.clickAt(clientX, clientY);
+
+    expect(h.state.openDialog).toBeNull();
+  });
+
+  it("does not respond to badge clicks in view mode", async () => {
+    const rectangle = API.createElement({ type: "rectangle", note: "a note" });
+    API.setElements([rectangle]);
+    API.setSelectedElements([]);
+    API.setAppState({ viewModeEnabled: true });
+
+    const { clientX, clientY } = badgeCenter(rectangle);
+    mouse.clickAt(clientX, clientY);
+
+    expect(h.state.openDialog).toBeNull();
   });
 });
