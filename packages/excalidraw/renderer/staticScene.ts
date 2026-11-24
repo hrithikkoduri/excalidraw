@@ -45,6 +45,8 @@ import {
   getExternalLinkImg,
   getElementLinkImg,
   getLinkHandleFromCoords,
+  getNoteBadgeFromCoords,
+  shouldRenderNoteBadge,
 } from "../components/hyperlink/helpers";
 
 import {
@@ -330,6 +332,99 @@ const renderLinkIcon = (
     context.restore();
   }
 };
+const NOTE_BADGE_ACCENT = "#6965db";
+const NOTE_BADGE_BACKGROUND = "#ffffff";
+const NOTE_BADGE_GLYPH_ON_ACCENT = "#ffffff";
+
+/**
+ * Paints the note badge for one element: a small rounded square at the
+ * element's top-right corner, just outside its bounds. Drawn in scene space
+ * with the context's zoom scale already applied, so it tracks pan and zoom by
+ * construction, and sized in scene units divided by zoom so it keeps a
+ * constant on-screen size (same approach as `renderLinkIcon`).
+ */
+const renderNoteBadge = (
+  element: NonDeletedExcalidrawElement,
+  context: CanvasRenderingContext2D,
+  appState: StaticCanvasAppState,
+  elementsMap: ElementsMap,
+  renderState: ElementRenderState,
+  isExporting: boolean,
+) => {
+  if (!shouldRenderNoteBadge(element, appState, isExporting)) {
+    return;
+  }
+
+  const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
+  const [x, y, width, height] = getNoteBadgeFromCoords(
+    [
+      x1 + renderState.offset.x,
+      y1 + renderState.offset.y,
+      x2 + renderState.offset.x,
+      y2 + renderState.offset.y,
+    ],
+    element.angle,
+    appState,
+  );
+
+  if (!(width > 0) || !(height > 0)) {
+    return;
+  }
+
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+
+  const isDark = appState.theme === THEME.DARK;
+  const accent = applyDarkModeFilter(NOTE_BADGE_ACCENT, isDark);
+  const fill =
+    element.id in appState.selectedElementIds
+      ? accent
+      : applyDarkModeFilter(NOTE_BADGE_BACKGROUND, isDark);
+  // the glyph reads against the accent when the badge is filled
+  const glyph =
+    element.id in appState.selectedElementIds
+      ? applyDarkModeFilter(NOTE_BADGE_GLYPH_ON_ACCENT, isDark)
+      : accent;
+
+  context.save();
+  context.translate(appState.scrollX + centerX, appState.scrollY + centerY);
+  context.rotate(element.angle);
+  context.globalAlpha = renderState.opacity;
+
+  const left = -width / 2;
+  const top = -height / 2;
+  const radius = width * 0.32;
+
+  context.beginPath();
+  if (context.roundRect) {
+    context.roundRect(left, top, width, height, radius);
+  } else {
+    context.rect(left, top, width, height);
+  }
+  context.fillStyle = fill;
+  context.fill();
+  context.lineWidth = Math.max(width * 0.08, 1 / appState.zoom.value);
+  context.strokeStyle = accent;
+  context.stroke();
+
+  // three horizontal "text" bars, the smallest legible note glyph at this size
+  context.fillStyle = glyph;
+  const barWidth = width * 0.5;
+  const barHeight = Math.max(height * 0.08, 1 / appState.zoom.value);
+  const barGap = height * 0.16;
+  for (let index = -1; index <= 1; index++) {
+    context.fillRect(
+      -barWidth / 2,
+      index * barGap - barHeight / 2,
+      // middle bar slightly shorter, like a written line
+      index === 1 ? barWidth * 0.68 : barWidth,
+      barHeight,
+    );
+  }
+
+  context.restore();
+};
+
 const _renderStaticScene = ({
   canvas,
   rc,
@@ -517,6 +612,15 @@ const _renderStaticScene = ({
             getRenderEnvironment(renderConfig.renderEnvironment),
           );
         }
+
+        renderNoteBadge(
+          element,
+          context,
+          appState,
+          elementsMap,
+          renderState,
+          isExporting,
+        );
       } catch (error: any) {
         logElementRenderError(error, element);
       }
@@ -581,6 +685,15 @@ const _renderStaticScene = ({
               getRenderEnvironment(renderConfig.renderEnvironment),
             );
           }
+
+          renderNoteBadge(
+            element,
+            context,
+            appState,
+            elementsMap,
+            renderState,
+            isExporting,
+          );
         });
       } catch (error: any) {
         logElementRenderError(error, element);

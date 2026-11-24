@@ -212,6 +212,21 @@
     "desc": "Click on a shape on canvas or paste a link.",
     "notFound": "Linked object wasn't found on canvas."
   },
+  "elementNote": {
+    "action": "Add note",
+    "actionEdit": "Edit note",
+    "title": "Note on \"{{elementType}}\"",
+    "titleEdit": "Edit note on \"{{elementType}}\"",
+    "desc": "Anyone who can open this drawing can read this note. It is saved with the drawing.",
+    "placeholder": "Say what this element is for, or what the next person should know before changing it.",
+    "counter": "{{count}} / {{max}}",
+    "save": "Save",
+    "fieldLabel": "Note",
+    "delete": "Delete note",
+    "nothingToDelete": "Nothing to delete yet",
+    "maxLengthError": "This note is too long ({{count}} / {{max}} characters).",
+    "noteOn": "Note: {{note}}"
+  },
   "library": {
     "noItems": "No items added yet...",
     "hint_emptyLibrary": "Select an item on canvas to add it here, or install a library from the public repository, below.",

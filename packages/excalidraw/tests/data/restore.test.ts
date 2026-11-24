@@ -103,6 +103,77 @@ describe("restoreElements", () => {
     expect(restored[0].id).not.toBe(restored[1].id);
   });
 
+  describe("note", () => {
+    it("keeps a note unchanged through JSON serialization and restore", () => {
+      const note = "  why this box exists\nsee the spec  ";
+      const element = API.createElement({
+        type: "rectangle",
+        index: "a0" as FractionalIndex,
+        note,
+      });
+
+      expect(element.note).toBe(note);
+
+      // JSON removes undefined, leaving the note as the only trace of it.
+      const input: ImportedDataState = JSON.parse(
+        JSON.stringify({ elements: [element] }),
+      );
+      const restored = restore.restoreElements(input.elements, null);
+
+      expect(restored[0].note).toBe(note);
+
+      const exported: ImportedDataState = JSON.parse(
+        serializeAsJSON(restored, getDefaultAppState(), {}, "local"),
+      );
+      expect(exported.elements?.[0]).toHaveProperty("note", note);
+      expect(restore.restoreElements(exported.elements, null)).toEqual(
+        restored,
+      );
+    });
+
+    it("restores an element without a note without adding a note key", () => {
+      const element = API.createElement({
+        type: "rectangle",
+        index: "a0" as FractionalIndex,
+      });
+      expect(element.note).toBeUndefined();
+
+      const input: ImportedDataState = JSON.parse(
+        JSON.stringify({ elements: [element] }),
+      );
+      expect(input.elements?.[0]).not.toHaveProperty("note");
+
+      const restored = restore.restoreElements(input.elements, null);
+      expect(restored[0]).not.toHaveProperty("note");
+
+      const exported: ImportedDataState = JSON.parse(
+        serializeAsJSON(restored, getDefaultAppState(), {}, "local"),
+      );
+      expect(exported.elements?.[0]).not.toHaveProperty("note");
+      expect(restore.restoreElements(exported.elements, null)).toEqual(
+        restored,
+      );
+    });
+
+    it("does not keep an empty note", () => {
+      const element = API.createElement({
+        type: "rectangle",
+        index: "a0" as FractionalIndex,
+        note: "",
+      });
+
+      expect(element.note).toBeUndefined();
+
+      const input: ImportedDataState = JSON.parse(
+        JSON.stringify({ elements: [element] }),
+      );
+      expect(input.elements?.[0]).not.toHaveProperty("note");
+
+      const restored = restore.restoreElements(input.elements, null);
+      expect(restored[0]).not.toHaveProperty("note");
+    });
+  });
+
   it("should restore transparent sticky note stroke as black", () => {
     const stickyNote = {
       ...API.createElement({ type: "stickynote" }),

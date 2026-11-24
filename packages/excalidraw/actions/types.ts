@@ -139,6 +139,7 @@ export type ActionName =
   | "searchMenu"
   | "copyElementLink"
   | "linkToElement"
+  | "elementNote"
   | "cropEditor"
   | "wrapSelectionInFrame"
   | "toggleWrap"

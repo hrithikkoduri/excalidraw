@@ -1,0 +1,67 @@
+@use "../css/variables.module" as *;
+
+.excalidraw {
+  .ElementNoteDialog {
+    display: flex;
+    flex-direction: column;
+
+    .ElementNoteDialog__desc {
+      margin: 0 0 1rem;
+      font-size: 0.875rem;
+      color: var(--text-primary-color);
+      opacity: 0.8;
+    }
+
+    .ElementNoteDialog__textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 9rem;
+      padding: 0.75rem;
+      resize: vertical;
+
+      font-family: var(--ui-font);
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--text-primary-color);
+
+      background-color: var(--input-bg-color);
+      border: 1px solid var(--input-border-color);
+      border-radius: var(--border-radius-md);
+
+      &:focus {
+        outline: none;
+        border-color: var(--color-primary);
+      }
+    }
+
+    .ElementNoteDialog__counter {
+      align-self: flex-end;
+      margin-top: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--text-primary-color);
+      opacity: 0.6;
+    }
+
+    .ElementNoteDialog__actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+
+      @include isMobile {
+        margin-top: 1rem;
+      }
+    }
+
+    .ElementNoteDialog__delete {
+      margin-right: auto;
+    }
+
+    .ElementNoteDialog__nothing-to-delete {
+      margin-right: auto;
+      font-size: 0.75rem;
+      opacity: 0.6;
+    }
+  }
+}

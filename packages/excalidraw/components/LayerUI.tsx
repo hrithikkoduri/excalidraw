@@ -51,6 +51,7 @@ import { DefaultSidebar } from "./DefaultSidebar";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
 import ElementLinkDialog from "./ElementLinkDialog";
+import ElementNoteDialog from "./ElementNoteDialog";
 import { ErrorDialog } from "./ErrorDialog";
 import { EyeDropper, activeEyeDropperAtom } from "./EyeDropper";
 import { FixedSideContainer } from "./FixedSideContainer";
@@ -582,6 +583,14 @@ const LayerUI = ({
         />
       )}
       <ActiveConfirmDialog />
+      {appState.openDialog?.name === "elementNote" && (
+        <ElementNoteDialog
+          elementId={appState.openDialog.elementId}
+          onClose={() => {
+            setAppState({ openDialog: null });
+          }}
+        />
+      )}
       {defaultUIEnabled && appState.openDialog?.name === "elementLinkSelector" && (
         <ElementLinkDialog
           sourceElementId={appState.openDialog.sourceElementId}

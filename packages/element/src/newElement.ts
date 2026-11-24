@@ -84,6 +84,7 @@ export type ElementConstructorOpts = MarkOptional<
   | "opacity"
   | "customData"
   | "created"
+  | "note"
 >;
 
 const _newElementBase = <T extends ExcalidrawElement>(
@@ -168,6 +169,8 @@ const _newElementBase = <T extends ExcalidrawElement>(
     created: rest.created === undefined ? timestamp : rest.created,
     link,
     locked,
+    // an empty note is no note: keep the property absent instead of ""
+    note: rest.note || undefined,
     customData: rest.customData,
   };
   return element;
