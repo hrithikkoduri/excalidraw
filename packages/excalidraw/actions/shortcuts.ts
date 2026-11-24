@@ -49,6 +49,7 @@ export type ShortcutName =
       | "toggleShortcuts"
       | "wrapSelectionInFrame"
       | "toggleWrap"
+      | "elementNote"
     >
   | "saveScene"
   | "imageExport"
@@ -115,6 +116,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   wrapSelectionInFrame: [],
   toggleWrap: [getShortcutKey("W")],
   toolLock: [getShortcutKey("Q")],
+  elementNote: [getShortcutKey("CtrlOrCmd+Alt+N")],
 };
 
 export const getShortcutFromShortcutName = (name: ShortcutName, idx = 0) => {

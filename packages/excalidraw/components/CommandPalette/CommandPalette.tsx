@@ -17,6 +17,7 @@ import { getShortcutKey } from "../../shortcut";
 
 import {
   actionClearCanvas,
+  actionElementNote,
   actionLink,
   actionToggleSearchMenu,
   actionToggleTheme,
@@ -337,6 +338,7 @@ function CommandPaletteInner({
         actionManager.actions.toggleLinearEditor,
         actionManager.actions.cropEditor,
         actionManager.actions.togglePolygon,
+        actionElementNote,
         actionLink,
         actionCopyElementLink,
         actionLinkToElement,

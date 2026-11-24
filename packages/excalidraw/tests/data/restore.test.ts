@@ -126,7 +126,9 @@ describe("restoreElements", () => {
         serializeAsJSON(restored, getDefaultAppState(), {}, "local"),
       );
       expect(exported.elements?.[0]).toHaveProperty("note", note);
-      expect(restore.restoreElements(exported.elements, null)).toEqual(restored);
+      expect(restore.restoreElements(exported.elements, null)).toEqual(
+        restored,
+      );
     });
 
     it("restores an element without a note without adding a note key", () => {
@@ -148,7 +150,9 @@ describe("restoreElements", () => {
         serializeAsJSON(restored, getDefaultAppState(), {}, "local"),
       );
       expect(exported.elements?.[0]).not.toHaveProperty("note");
-      expect(restore.restoreElements(exported.elements, null)).toEqual(restored);
+      expect(restore.restoreElements(exported.elements, null)).toEqual(
+        restored,
+      );
     });
 
     it("does not keep an empty note", () => {

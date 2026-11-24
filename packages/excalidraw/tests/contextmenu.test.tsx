@@ -135,6 +135,7 @@ describe("contextMenu element", () => {
       "bringToFront",
       "duplicateSelection",
       "hyperlink",
+      "elementNote",
       "copyElementLink",
       "toggleElementLock",
     ];
@@ -229,6 +230,7 @@ describe("contextMenu element", () => {
       "sendToBack",
       "bringToFront",
       "duplicateSelection",
+      "elementNote",
       "toggleElementLock",
     ];
 
@@ -287,6 +289,7 @@ describe("contextMenu element", () => {
       "sendToBack",
       "bringToFront",
       "duplicateSelection",
+      "elementNote",
       "toggleElementLock",
     ];
 
