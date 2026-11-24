@@ -83,6 +83,10 @@ type _ExcalidrawElementBase = Readonly<{
   created: number | null;
   link: string | null;
   locked: boolean;
+  /** Free-form note attached to the element by the user. Absent (never "")
+      when the element has no note. Part of the element so it is saved,
+      exported and reconciled like any other property. */
+  note?: string;
   customData?: Record<string, any>;
 }>;
 
